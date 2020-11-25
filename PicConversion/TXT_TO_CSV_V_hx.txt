@@ -1,0 +1,288 @@
+
+	/*失败的原因:
+	 *	无法有效的去区分三个不同视场下的
+	 *	左上、左下、右上和右下
+	 *
+	 *11-25-2020：现有问题：到最末尾后，因为写入CSV的标志是要判断下一位的SENSORID和刀口大小，所以存在问题
+					解决方案：根据长度来强行结束（问题：长度在以文本读的情况下不准确，以二进制读没实验）
+	 */
+	int hx= 0;
+	int hlb = 0;
+	int ylb = 0;
+	int hy = 0;
+	CString filter = L".txt文件(*.txt)|*.txt||";
+	CFileDialog dlg(1,NULL,NULL,OFN_HIDEREADONLY|OFN_OVERWRITEPROMPT,filter,NULL);
+	if (IDCANCEL != dlg.DoModal())
+	{
+		USES_CONVERSION;
+		CString dirPath = dlg.GetFolderPath();
+		SetCurrentDirectoryA(T2A(dirPath));
+		CString filePath = dlg.GetPathName();
+		CString fileName = dlg.GetFileName();
+		CString fileTitle = dlg.GetFileTitle();
+
+		
+		/*ULONGLONG size;
+		CFileStatus fileStatus;
+		if (CFile::GetStatus(filePath, fileStatus))
+		{
+		size = fileStatus.m_size;
+		}
+		if (size == 0)
+		{
+		AfxMessageBox(L"文件长度为零！");
+		return;
+		}*/
+
+		FILE *txtfile;
+		fopen_s(&txtfile, T2A(filePath), "rb+");
+		if (txtfile == NULL)
+		{
+			AfxMessageBox(L"打开文件失败！");
+			return;
+		}
+
+		fseek(txtfile,0,SEEK_END);     //定位到文件末  
+		int nFileLen = ftell(txtfile);       //文件长度
+		
+		/*while (fgets())
+		{
+			memset(szTest, )
+		}*/
+		
+		//BYTE b[1024] = {0};
+		
+		//fread(a, 1, size, txtfile);
+		using namespace std;
+		ifstream in(T2A(filePath));
+		ofstream out("hy1.txt");
+		if (!in.is_open())
+		{
+			return ;
+		}
+
+		if (!out.is_open())
+		{
+			return ;
+		}
+		string s = "";
+		while(!in.eof())
+		{
+			//in >> b;
+			getline(in,s,'\r');
+			out << s;
+		}
+		in.close();
+		out.close();
+
+#if 0
+
+
+		/*fclose(txtfile);
+
+		FILE *f1;
+		fopen_s(&f1, "hy.txt", "wb+");
+		fwrite(a, 1, size, f1);
+		fclose(f1);*/
+		
+		CString field1[10] = {L""};
+		CString field2[10] = {L""};
+		CString field3[10] = {L""};
+		for (int m = 0; m < 10; m++)
+		{
+			field1[m] = L"0";
+			field2[m] = L"0";
+			field3[m] = L"0";
+		}
+		CString sensorID = L"";
+		CString temp = L"";
+		int sFlag = -1;
+		int view = 0;
+		CString dao = L"";
+		int n = 0;
+		int n2 = 0, n3 = 0;
+		FILE *csvfile;
+		fopen_s(&csvfile, fileTitle + "_csv.csv", "wb+");
+		fprintf(csvfile, "%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+			"SensorID", "dao", "C_H", "C_V", "0.3_LT_H", "0.3_LT_V", "0.3_LD_H", "0.3_LD_V", "0.3_RT_H", "0.3_RT_V", "0.3_RD_H", "0.3_RD_V",
+			"0.5_LT_H", "0.5_LT_V", "0.5_LD_H", "0.5_LD_V", "0.5_RT_H", "0.5_RT_V", "0.5_RD_H", "0.5_RD_V",
+			"0.8_LT_H", "0.8_LT_V", "0.8_LD_H", "0.8_LD_V", "0.8_RT_H", "0.8_RT_V", "0.8_RD_H", "0.8_RD_V");
+		for (int i = 0; i <= size; i++)
+		{
+			//if (i >= 777054 && i%1 == 0)
+			//{
+			//	i= i*1;
+			//	hy = 1;
+			//}
+			//视场大小
+			if (0xB3 == a[i] && 0xA1 == a[i + 1] && 0xA3 == a[i + 2] && 0xBA == a[i + 3])
+			{
+				sFlag = a[i + 6];
+			}
+			//判断SensorID
+			if (0x44 == a[i] && 0xA3 == a[i + 1] && 0xBA == a[i + 2])
+			{
+				temp = L"";
+				while (a[i + 3] != 0x0A)
+				{
+					temp += a[i + 3];
+					i++;
+					if (hlb == 1)
+					{
+						hlb = 2;
+					}
+					if (ylb == 1)
+					{
+						ylb = 2;
+					}
+				}
+			}
+			//判断刀口
+			if (0xD0 == a[i] && 0xA1 == a[i + 1] && 0xA3 == a[i + 2] && 0xBA == a[i + 3])
+			{
+				dao = L"";
+				while (a[i + 4] != 0x0A)
+				{
+					hx++;
+					if (hx >=1220)
+					{
+						hx = hx +1-1;
+					}
+					dao += a[i + 4];
+					i++;
+				}
+			}
+			//判断视场和SensorID
+			if (view == sFlag)
+			{
+				if (ylb == 0)
+				{
+					ylb = 1;
+				}
+			}
+			if (hy == 1||ylb == 2 || (sensorID != temp && sensorID != "") || hlb == 2 )
+			{
+
+				fprintf(csvfile, "%s,%s,%s,%s",
+					T2A(sensorID), T2A(dao), T2A(field1[8]), T2A(field1[9]));
+				for (int j = 0; j < 8; j++)
+				{
+					fprintf(csvfile, ",%s", T2A(field1[j]));
+					field1[j] = L"0";
+				}
+				for (int j = 0; j < 8; j++)
+				{
+					fprintf(csvfile, ",%s", T2A(field2[j]));
+					field2[j] = L"0";
+				}
+				for (int j = 0; j < 8; j++)
+				{
+					fprintf(csvfile, ",%s", T2A(field3[j]));
+					field3[j] = L"0";
+				}
+				fprintf(csvfile, "\r");
+				field1[8] = L"0";
+				field2[8] = L"0";
+				field3[8] = L"0";
+				field1[9] = L"0";
+				field2[9] = L"0";
+				field3[9] = L"0";
+				n = 0;
+				n2 = 0;
+				n3 = 0;
+				sensorID = L"";
+				sensorID = temp;
+				hlb = 0;
+				ylb = 0;
+				//view = sFlag;
+				if (hy == 1)
+				{
+					break;
+				}
+			}
+			else
+			{
+				if (view == 51)
+				{
+					if (0x48 == a[i] && 0xA3 == a[i + 1] && 0xBA == a[i + 2])
+					{
+						while (a[i + 3] != 0x09)
+						{
+							field1[n] += a[i + 3];
+							i++;
+						}
+						n++;
+					}
+					if (0x56 == a[i] && 0xA3 == a[i + 1] && 0xBA == a[i + 2])
+					{
+						while (a[i + 3] != 0x0A)
+						{
+							field1[n] += a[i + 3];
+							i++;
+						}
+						n++;
+					}
+				}
+				else if (view == 53)
+				{
+					if (0x48 == a[i] && 0xA3 == a[i + 1] && 0xBA == a[i + 2])
+					{
+						while (a[i + 3] != 0x09)
+						{
+							field2[n2] += a[i + 3];
+							i++;
+						}
+						n2++;
+					}
+					if (0x56 == a[i] && 0xA3 == a[i + 1] && 0xBA == a[i + 2])
+					{
+						while (a[i + 3] != 0x0A)
+						{
+							field2[n2] += a[i + 3];
+							i++;
+						}
+						n2++;
+					}
+				}
+				else if (view == 56)
+				{
+					if (0x48 == a[i] && 0xA3 == a[i + 1] && 0xBA == a[i + 2])
+					{
+						while (a[i + 3] != 0x09)
+						{
+							field3[n3] += a[i + 3];
+							i++;
+						}
+						n3++;
+					}
+					if (0x56 == a[i] && 0xA3 == a[i + 1] && 0xBA == a[i + 2])
+					{
+						while (a[i + 3] != 0x0A)
+						{
+							field3[n3] += a[i + 3];
+							i++;
+						}
+						n3++;
+					}
+					if (10 == n3)
+					{
+						hlb = 1;
+					}
+				}
+			}
+			if (sFlag != -1)
+			{
+				view = sFlag;
+			}
+			if (temp != L"")
+			{
+				sensorID = temp;
+			}
+			sFlag = -1;
+		}
+		delete[] a;
+		fclose(csvfile);
+		AfxMessageBox(L"转换完成！");
+
+#endif
+	}
