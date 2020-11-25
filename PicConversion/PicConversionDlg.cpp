@@ -93,6 +93,7 @@ BEGIN_MESSAGE_MAP(CPicConversionDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON5, &CPicConversionDlg::OnBnClickedButton5)
 	ON_BN_CLICKED(IDC_BUTTON6, &CPicConversionDlg::OnBnClickedButton6)
 	ON_BN_CLICKED(IDC_BUTTON7, &CPicConversionDlg::OnBnClickedButton7)
+	ON_BN_CLICKED(IDC_BUTTON8, &CPicConversionDlg::OnBnClickedButton8)
 END_MESSAGE_MAP()
 
 
@@ -193,9 +194,11 @@ void CPicConversionDlg::OnBnClickedOk()
 	UpdateData(TRUE);
 	if (m_Width <= 0 || m_Height <= 0)
 	{
+		AfxMessageBox(L"宽或高不符合规格");
 		return;
 	}
 	BYTE* raw8buf = new BYTE[m_Width * m_Height];
+	int *a = new int;
 	BYTE* raw10buf = new BYTE[m_Width * m_Height * 2];
 	BYTE* bmpbuf = new BYTE[m_Width * m_Height * 3];
 	BYTE* ov = new BYTE[m_Width * m_Height * 2];
@@ -228,6 +231,7 @@ void CPicConversionDlg::OnBnClickedOk()
 			CString ToFileName;
 			int size = 0;
 			m_resultList.DeleteAllItems();
+			int i = 0;
 			while (work)
 			{
 				work = finder.FindNextFileW();
@@ -236,142 +240,8 @@ void CPicConversionDlg::OnBnClickedOk()
 				size = finder.GetLength();
 				BOOL state;
 				state = FALSE;
-				FILE *file = NULL;
-				if(m_option == 0)
-				{
-					//R8ToR10
-					sta = m_Width * m_Height;
-					if (size == sta)
-					{
-						USES_CONVERSION;
-						file = fopen(T2A(filename), "rb+");
-						fread(raw8buf, 1, size, file);
-						fclose(file);
-						state = Raw8ToRaw10(raw8buf, raw10buf, m_Width, m_Height);
-						if (0 != access("OutRaw10File", 0))
-						{
-						    // if this folder not exist, create a new one.
-						    mkdir("OutRaw10File");   // 返回 0 表示创建成功，-1 表示失败
-						    //换成 ::_mkdir  ::_access 也行，不知道什么意思
-						}
-						ToFileName = L"OutRaw10File\\" + fileTitle + L"_r10.raw";
-						file = fopen(T2A(ToFileName), "wb");
-						fwrite(raw10buf, 1, size * 2, file);
-						fclose(file);
-					}
-				}
-				else if (m_option == 1)
-				{
-					//R10ToR8
-					sta = m_Width * m_Height * 2;
-					if (size == sta)
-					{
-						USES_CONVERSION;
-						file = fopen(T2A(filename), "rb+");
-						fread(raw10buf, 1, size, file);
-						fclose(file);
-						state = Raw10ToRaw8(raw10buf, raw8buf, m_Width, m_Height);
-						if (0 != access("OutRaw8File", 0))
-						{
-						    // if this folder not exist, create a new one.
-						    mkdir("OutRaw8File");   // 返回 0 表示创建成功，-1 表示失败
-						    //换成 ::_mkdir  ::_access 也行，不知道什么意思
-						}
-						ToFileName = L"OutRaw8File\\" + fileTitle + L"_r8.raw";
-						file = fopen(T2A(ToFileName), "wb");
-						fwrite(raw8buf, 1, size / 2, file);
-						fclose(file);
-					}
-				}
-				else if(m_option == 2)
-				{
-					//R8ToBMP
-					sta = m_Width * m_Height;
-					if (sta == size)
-					{
-						USES_CONVERSION;
-						file = fopen(T2A(filename), "rb+");
-						fread(raw8buf, 1, size, file);
-						fclose(file);
-						if (0 != access("OutRaw8BMPFile", 0))
-						{
-						    // if this folder not exist, create a new one.
-						    mkdir("OutRaw8BMPFile");   // 返回 0 表示创建成功，-1 表示失败
-						    //换成 ::_mkdir  ::_access 也行，不知道什么意思
-						}
-						ToFileName = L"OutRaw8BMPFile\\" + fileTitle + L"_BMP.bmp";
-						BayerConversionFlip(raw8buf, bmpbuf, m_Width, m_Height,  m_ByteMode);
-						state = SaveBMP(bmpbuf, m_Width, m_Height, ToFileName);
-					}
-				}
-				else if(m_option == 3)
-				{
-					//R10ToBMP
-					sta = m_Width * m_Height * 2;
-					if (sta == size)
-					{
-						USES_CONVERSION;
-						file = fopen(T2A(filename), "rb+");
-						fread(raw10buf, 1, size, file);
-						fclose(file);
-						if (0 != access("OutRaw10BMPFile", 0))
-						{
-						    // if this folder not exist, create a new one.
-						    mkdir("OutRaw10BMPFile");   // 返回 0 表示创建成功，-1 表示失败
-						    //换成 ::_mkdir  ::_access 也行，不知道什么意思
-						}
-						ToFileName = L"OutRaw10BMPFile\\" + fileTitle + L"_BMP.bmp";
-						Raw10ToRaw8(raw10buf, raw8buf, m_Width, m_Height);
-						BayerConversionFlip(raw8buf, bmpbuf, m_Width, m_Height,  m_ByteMode);
-						state = SaveBMP(bmpbuf, m_Width, m_Height, ToFileName);
-					}
-				}
-				else if (m_option == 4)
-				{
-					//4CellR8ToBayerR8
-					sta = m_Width * m_Height;
-					if (sta == size)
-					{
-						USES_CONVERSION;
-						file = fopen(T2A(filename), "rb+");
-						fread(raw8buf, 1, size, file);
-						fclose(file);
-						if (0 != access("Out4CellRaw8File", 0))
-						{
-						    // if this folder not exist, create a new one.
-						    mkdir("Out4CellRaw8File");   // 返回 0 表示创建成功，-1 表示失败
-						    //换成 ::_mkdir  ::_access 也行，不知道什么意思
-						}
-						ToFileName = L"Out4CellRaw8File\\" + fileTitle + L"_r8.raw";
-						state = Cell8ToRaw8(raw8buf, m_Width, m_Height);
-						file = fopen(T2A(ToFileName), "wb");
-						fwrite(raw8buf, 1, size, file);
-						fclose(file);
-					}
-				}
-				else if (m_option == 5)
-				{
-					//4CellR10ToBayerR10
-					sta = m_Width * m_Height * 2;
-					if (sta == size)
-					{
-						USES_CONVERSION;
-						file = fopen(T2A(filename), "rb+");
-						fread(raw10buf, 1, size, file);
-						fclose(file);
-						if (0 != access("Out4CellRaw10File", 0))
-						{
-						    // if this folder not exist, create a new one.
-						    mkdir("Out4CellRaw10File");   // 返回 0 表示创建成功，-1 表示失败
-						    //换成 ::_mkdir  ::_access 也行，不知道什么意思
-						}
-						ToFileName = L"Out4CellRaw10File\\" + fileTitle + L"_r10.raw";
-						state = Cell10ToRaw10(raw10buf, m_Width, m_Height);
-						file = fopen(T2A(ToFileName), "wb");
-						fwrite(raw10buf, 1, size, file);
-						fclose(file);
-					}
-				}
+				
+				state = Choice(filename, fileTitle, raw8buf, raw10buf, bmpbuf, size);
 #if 0
 
 				else if (m_option == 6)
@@ -397,14 +267,12 @@ void CPicConversionDlg::OnBnClickedOk()
 					}
 				}
 #endif
-				else
-				{
-					MessageBox(L"该内容正在完善！");
-				}
-				int i = 0;
+				
+				
 				
 				m_resultList.InsertItem(i, _T(""));
 				m_resultList.SetItemText(i, 1, filename);
+				
 				if (state == FALSE)
 				{
 					m_resultList.SetItemText(i, 2, _T("---失败---"));
@@ -413,15 +281,16 @@ void CPicConversionDlg::OnBnClickedOk()
 				{
 					m_resultList.SetItemText(i, 2, _T("成功"));
 				}
+				i++;
 			}
 			finder.Close();
 		}
-		delete[] raw8buf;
-		delete[] raw10buf;
-		delete[] bmpbuf;
-		delete[] ov;
 //		delete[] otp_dpc;
 	}
+	delete[] raw8buf;
+	delete[] raw10buf;
+	delete[] bmpbuf;
+	delete[] ov;
 	//CString filter = L"(*.raw)|*.raw||";
 	//CFileDialog dlg(TRUE, NULL, NULL, OFN_ALLOWMULTISELECT, filter, NULL);
 	//if (IDCANCEL != dlg.DoModal())
@@ -520,6 +389,155 @@ void CPicConversionDlg::OnBnClickedOk()
 	//		fclose(file);
 	//	}
 	//}
+}
+
+BOOL CPicConversionDlg::Choice(CString filename, CString fileTitle, BYTE *raw8buf, BYTE *raw10buf, BYTE *bmpbuf, int size)
+{
+	BOOL state;
+	state = FALSE;
+	int sta = 0;
+	FILE *file = NULL;
+	CString ToFileName = NULL;
+	if(m_option == 0)
+	{
+		//R8ToR10
+		sta = m_Width * m_Height;
+		if (size == sta)
+		{
+			USES_CONVERSION;
+			file = fopen(T2A(filename), "rb+");
+			fread(raw8buf, 1, size, file);
+			fclose(file);
+			state = Raw8ToRaw10(raw8buf, raw10buf, m_Width, m_Height);
+			if (0 != access("OutRaw10File", 0))
+			{
+				// if this folder not exist, create a new one.
+				mkdir("OutRaw10File");   // 返回 0 表示创建成功，-1 表示失败
+				//换成 ::_mkdir  ::_access 也行，不知道什么意思
+			}
+			ToFileName = L"OutRaw10File\\" + fileTitle + L"_r10.raw";
+			file = fopen(T2A(ToFileName), "wb");
+			fwrite(raw10buf, 1, size * 2, file);
+			fclose(file);
+		}
+	}
+	else if (m_option == 1)
+	{
+		//R10ToR8
+		sta = m_Width * m_Height * 2;
+		if (size == sta)
+		{
+			USES_CONVERSION;
+			file = fopen(T2A(filename), "rb+");
+			fread(raw10buf, 1, size, file);
+			fclose(file);
+			state = Raw10ToRaw8(raw10buf, raw8buf, m_Width, m_Height);
+			if (0 != access("OutRaw8File", 0))
+			{
+				// if this folder not exist, create a new one.
+				mkdir("OutRaw8File");   // 返回 0 表示创建成功，-1 表示失败
+				//换成 ::_mkdir  ::_access 也行，不知道什么意思
+			}
+			ToFileName = L"OutRaw8File\\" + fileTitle + L"_r8.raw";
+			file = fopen(T2A(ToFileName), "wb");
+			fwrite(raw8buf, 1, size / 2, file);
+			fclose(file);
+		}
+	}
+	else if(m_option == 2)
+	{
+		//R8ToBMP
+		sta = m_Width * m_Height;
+		if (sta == size)
+		{
+			USES_CONVERSION;
+			file = fopen(T2A(filename), "rb+");
+			fread(raw8buf, 1, size, file);
+			fclose(file);
+			if (0 != access("OutRaw8BMPFile", 0))
+			{
+				// if this folder not exist, create a new one.
+				mkdir("OutRaw8BMPFile");   // 返回 0 表示创建成功，-1 表示失败
+				//换成 ::_mkdir  ::_access 也行，不知道什么意思
+			}
+			ToFileName = L"OutRaw8BMPFile\\" + fileTitle + L"_BMP.bmp";
+			BayerConversionFlip(raw8buf, bmpbuf, m_Width, m_Height,  m_ByteMode);
+			state = SaveBMP(bmpbuf, m_Width, m_Height, ToFileName);
+		}
+	}
+	else if(m_option == 3)
+	{
+		//R10ToBMP
+		sta = m_Width * m_Height * 2;
+		if (sta == size)
+		{
+			USES_CONVERSION;
+			file = fopen(T2A(filename), "rb+");
+			fread(raw10buf, 1, size, file);
+			fclose(file);
+			if (0 != access("OutRaw10BMPFile", 0))
+			{
+				// if this folder not exist, create a new one.
+				mkdir("OutRaw10BMPFile");   // 返回 0 表示创建成功，-1 表示失败
+				//换成 ::_mkdir  ::_access 也行，不知道什么意思
+			}
+			ToFileName = L"OutRaw10BMPFile\\" + fileTitle + L"_BMP.bmp";
+			Raw10ToRaw8(raw10buf, raw8buf, m_Width, m_Height);
+			BayerConversionFlip(raw8buf, bmpbuf, m_Width, m_Height,  m_ByteMode);
+			state = SaveBMP(bmpbuf, m_Width, m_Height, ToFileName);
+		}
+	}
+	else if (m_option == 4)
+	{
+		//4CellR8ToBayerR8
+		sta = m_Width * m_Height;
+		if (sta == size)
+		{
+			USES_CONVERSION;
+			file = fopen(T2A(filename), "rb+");
+			fread(raw8buf, 1, size, file);
+			fclose(file);
+			if (0 != access("Out4CellRaw8File", 0))
+			{
+				// if this folder not exist, create a new one.
+				mkdir("Out4CellRaw8File");   // 返回 0 表示创建成功，-1 表示失败
+				//换成 ::_mkdir  ::_access 也行，不知道什么意思
+			}
+			ToFileName = L"Out4CellRaw8File\\" + fileTitle + L"_r8.raw";
+			state = Cell8ToRaw8(raw8buf, m_Width, m_Height);
+			file = fopen(T2A(ToFileName), "wb");
+			fwrite(raw8buf, 1, size, file);
+			fclose(file);
+		}
+	}
+	else if (m_option == 5)
+	{
+		//4CellR10ToBayerR10
+		sta = m_Width * m_Height * 2;
+		if (sta == size)
+		{
+			USES_CONVERSION;
+			file = fopen(T2A(filename), "rb+");
+			fread(raw10buf, 1, size, file);
+			fclose(file);
+			if (0 != access("Out4CellRaw10File", 0))
+			{
+				// if this folder not exist, create a new one.
+				mkdir("Out4CellRaw10File");   // 返回 0 表示创建成功，-1 表示失败
+				//换成 ::_mkdir  ::_access 也行，不知道什么意思
+			}
+			ToFileName = L"Out4CellRaw10File\\" + fileTitle + L"_r10.raw";
+			state = Cell10ToRaw10(raw10buf, m_Width, m_Height);
+			file = fopen(T2A(ToFileName), "wb");
+			fwrite(raw10buf, 1, size, file);
+			fclose(file);
+		}
+	}
+	else
+	{
+		MessageBox(L"该内容正在完善！");
+	}
+	return state;
 }
 
 BOOL Raw8ToRaw10(unsigned char* raw8, unsigned char* raw10, int width, int height)
@@ -2259,4 +2277,20 @@ save_data:		fprintf(out_file,"%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f
 	fclose(readFile);
 	fclose(out_file);
 	return true;
+}
+
+
+void CPicConversionDlg::OnBnClickedButton8()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	CString filter = L"(*.raw)|*.raw||";
+	CFileDialog dlg(TRUE, NULL, NULL, OFN_ALLOWMULTISELECT, filter, NULL);
+	if (IDCANCEL != dlg.DoModal())
+	{
+		CString filePath = dlg.GetFolderPath();
+		SetCurrentDirectory(filePath);
+		CString fileName = dlg.GetFileName();
+		CString fileTitle = dlg.GetFileTitle();
+		Choice(fileName, fileTitle,)
+	}
 }

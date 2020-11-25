@@ -35,6 +35,7 @@ public:
 	int m_ByteMode;
 	afx_msg void OnBnClickedOk();
 	int m_option;
+	BOOL Choice(CString filename, CString fileTitle, BYTE *raw8buf, BYTE *raw10buf, BYTE *bmpbuf, int size);
 
 	int CPicConversionDlg::ReadReg(int id, int addr);
 	
