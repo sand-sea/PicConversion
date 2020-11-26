@@ -187,7 +187,7 @@ HCURSOR CPicConversionDlg::OnQueryDragIcon()
 }
 
 
-
+//文件夹转换
 void CPicConversionDlg::OnBnClickedOk()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -198,10 +198,8 @@ void CPicConversionDlg::OnBnClickedOk()
 		return;
 	}
 	BYTE* raw8buf = new BYTE[m_Width * m_Height];
-	int *a = new int;
 	BYTE* raw10buf = new BYTE[m_Width * m_Height * 2];
 	BYTE* bmpbuf = new BYTE[m_Width * m_Height * 3];
-	BYTE* ov = new BYTE[m_Width * m_Height * 2];
 	/*int *otp_dpc = new int[4096];
 	FILE *file;
 	file = fopen("123456.txt", "rb+");
@@ -290,7 +288,6 @@ void CPicConversionDlg::OnBnClickedOk()
 	delete[] raw8buf;
 	delete[] raw10buf;
 	delete[] bmpbuf;
-	delete[] ov;
 	//CString filter = L"(*.raw)|*.raw||";
 	//CFileDialog dlg(TRUE, NULL, NULL, OFN_ALLOWMULTISELECT, filter, NULL);
 	//if (IDCANCEL != dlg.DoModal())
@@ -391,6 +388,7 @@ void CPicConversionDlg::OnBnClickedOk()
 	//}
 }
 
+//单选框
 BOOL CPicConversionDlg::Choice(CString filename, CString fileTitle, BYTE *raw8buf, BYTE *raw10buf, BYTE *bmpbuf, int size)
 {
 	BOOL state;
@@ -540,747 +538,6 @@ BOOL CPicConversionDlg::Choice(CString filename, CString fileTitle, BYTE *raw8bu
 	return state;
 }
 
-BOOL Raw8ToRaw10(unsigned char* raw8, unsigned char* raw10, int width, int height)
-{
-	for (int i = 0; i < height; i++)
-	{
-		for (int j = 0; j < width; j++)
-		{
-			raw10[2 * (i * width + j)] = raw8[i * width + j] << 2;
-			raw10[2 * (i * width + j) + 1] = raw8[i * width + j] >> 6;
-		}
-	}
-	if (raw10 != NULL && raw10[0] == (raw8[0] << 2))
-	{
-		return TRUE;
-	}
-	return FALSE;
-}
-
-BOOL Raw10ToRaw8(unsigned char* raw10, unsigned char* raw8, int width, int height)
-{
-	for (int i = 0; i < height; i++)
-	{
-		for (int j = 0; j < width; j++)
-		{
-			raw8[i * width + j] = raw10[2 * (i * width + j)] >> 2 | raw10[2 * (i * width + j) + 1] << 6;
-		}
-	}
-	if (raw8 != NULL && raw8[0] == (raw10[0] >> 2 | raw10[1] << 6))
-	{
-		return TRUE;
-	}
-	return FALSE;
-}
-
-BOOL SaveBMP(unsigned char* bmpbuf, int width, int height, CString filetitle)
-{
-	int size;
-	size = width * height * 3;
-	BITMAPFILEHEADER bmpHeader;
-	bmpHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
-	bmpHeader.bfReserved1 = 0;
-	bmpHeader.bfReserved2 = 0;
-	bmpHeader.bfSize = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + size;
-	bmpHeader.bfType = 0x4D42;
-
-	BITMAPINFOHEADER bmpInfo;
-	bmpInfo.biSize = sizeof(BITMAPINFOHEADER);
-	bmpInfo.biWidth = width;
-	bmpInfo.biHeight = height;
-	bmpInfo.biPlanes = 1;
-	bmpInfo.biBitCount = 24;
-	bmpInfo.biCompression = 0;
-	bmpInfo.biSizeImage = size;
-	bmpInfo.biXPelsPerMeter = 0;
-	bmpInfo.biYPelsPerMeter = 0;
-	bmpInfo.biClrUsed = 0;
-	bmpInfo.biClrImportant = 0;
-	
-	if (bmpbuf == NULL)
-	{
-		return FALSE;
-	}
-	FILE *bmpFile;
-	USES_CONVERSION;
-	bmpFile = fopen(T2A(filetitle), "wb+");
-	fwrite(&bmpHeader, 1, sizeof(BITMAPFILEHEADER), bmpFile);
-	fwrite(&bmpInfo, 1, sizeof(BITMAPINFOHEADER), bmpFile);
-	fwrite(bmpbuf, 3, width * height, bmpFile);
-	fclose(bmpFile);
-	return TRUE;
-}
-
-void BayerConversionFlip( BYTE* pSrcBuffer, BYTE* pDstBuffer, int nImgWidth, int nImgHeight, int bayerType)
-{
-	int width = nImgWidth;
-	int height  = nImgHeight;
-
-	int x = 0; 
-	int y = 0;
-	int i = 0;
-
-
-	switch( bayerType )
-	{
-	case 0: //RGGB
-		{
-			//////////////////////////////			
-			///Corner case;
-			x = 0;
-			y = 0;
-			pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[(height-1)*width+1]; //B
-			pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[ (height-2)*width+1] + pSrcBuffer[(height-1)*width])/2; //G
-			pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[ (height-2)*width]; // R
-
-			x = width - 1;
-			y = 0;
-			pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[ height*width - 1 ]; 
-			pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[height*width -2] + pSrcBuffer[(height-1)*width-1] )/2;
-			pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[(height-1)*width - 2];
-
-			x = 0;
-			y = height - 1;
-			pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[width+1];
-			pDstBuffer[ y * width * 3 + x * 3 + 1 ] = (pSrcBuffer[1] + pSrcBuffer[width] )/2;
-			pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[0];
-
-			x = width - 1;
-			y = height - 1;
-			pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[width*2-1];
-			pDstBuffer[ y * width * 3 + x * 3 + 1 ]  = ( pSrcBuffer[width*2 -2] + pSrcBuffer[width -1 ] )/2;
-			pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[width-2];
-
-			//for boundary
-			for(x = 1; x < width -1; x++ )
-			{ 	
-				if( x%2 == 1 )
-				{
-					y = 0;
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[(height-1)*width+x]; //B
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[(height-1)*width+x-1] + pSrcBuffer[(height-1)*width+x+1] + pSrcBuffer[(height-2)*width+x] )/3; //G
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = ( pSrcBuffer[(height-2)*width+x-1] +  pSrcBuffer[(height-2)*width+x+1] )/2; //R
-
-					y = height -1;
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[width+x];
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[x] + pSrcBuffer[width+x-1] + pSrcBuffer[width+x+1] ) /3 ;
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = ( pSrcBuffer[x-1] + pSrcBuffer[x+1] )/2; 
-				}
-				else
-				{
-					y = 0;
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = ( pSrcBuffer[(height-1)*width+x-1] + pSrcBuffer[(height-1)*width+x+1] )/2; //B
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[(height-1)*width+x] + pSrcBuffer[(height-2)*width+x-1] + pSrcBuffer[(height-2)*width + x +1])/3; //G //Here
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[(height-2)*width+x];	//R
-
-					y = height -1;
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[width+x-1] + pSrcBuffer[width+x+1] )/2;
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[width+x] + pSrcBuffer[x-1] + pSrcBuffer[x+1] )/3 ;
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[x] ; 
-
-				} 
-			}
-
-			for(y = 1;  y < height - 1; y++ )
-			{
-				if( y%2 == 1 )
-				{
-					x = 0;
-					i = ( height -1 - y )*width;
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = ( pSrcBuffer[i-width+1] + pSrcBuffer[i+width+1] )/2;
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i+1] )/3;
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[i];
-
-
-					x = width -1;
-					i = ( height - 1 - y)* width + x;
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[i] + pSrcBuffer[i-width-1] + pSrcBuffer[i+width-1])/3;  //here 
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[i-1];  
-				}
-				else
-				{
-					x = 0;                                             
-					i = ( height -1 - y )*width;                       
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[i+1];      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[i] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width+1])/3;          
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;         
-						
-						
-					x = width -1;                                      
-					i = ( height - 1 - y)* width + x;                      
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[i];      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i-1] )/3;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = ( pSrcBuffer[i-width-1] + pSrcBuffer[i+width-1] )/2;  //Here
-
-				}
-			}
-
-
-			//other area
-			for( y = 1; y < height-1; y++ )
-			{
-				for( x=1; x < width-1; x++ )
-				{
-					i = (height-1-y)*width + x;
-
-					if( y%2 == 1 )
-					{
-						if( x%2 == 1 ) //G1
-						{
-							pDstBuffer[y * width * 3 + x * 3 + 0] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;
-							pDstBuffer[y * width * 3 + x * 3 + 1] =  ( pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;
-							pDstBuffer[y * width * 3 + x * 3 + 2] =  (pSrcBuffer[i-1] + pSrcBuffer[i+1])/2;//Here
-
-						}
-						else  //R
-						{
-							pDstBuffer[y * width * 3 + x * 3 + 0] = ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] ) / 4;
-							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] + pSrcBuffer[i+width]) / 4;
-							pDstBuffer[y * width * 3 + x * 3 + 2] =  pSrcBuffer[i]; 
-						}
-					}
-					else
-					{
-						if( x%2  == 1)  //B
-						{
-							pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[i];
-							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] ) /4;//Here
-							pDstBuffer[y * width * 3 + x * 3 + 2] = ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1]) /4;
-						}
-						else  //G2
-						{
-							pDstBuffer[y * width * 3 + x * 3 + 0] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;
-							pDstBuffer[y * width * 3 + x * 3 + 1] =   (pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;
-							pDstBuffer[y * width * 3 + x * 3 + 2] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;
-						}
-
-					}
-				}
-			}
-		}
-		break;
-
-	case 1: //GRBG
-		{ 
-			//corner case
-			x = 0;
-			y = 0;
-			i = (height-1)*width;
-			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[i]; //B
-			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i+1] )/2; //G
-			pDstBuffer[y * width * 3 + x * 3 + 2] =   pSrcBuffer[i-width+1]; 
-
-			x = width -1;
-			y = 0;			 
-			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[height*width-2];
-			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[(height-1)*width-2] + pSrcBuffer[height*width-1] )/2;
-			pDstBuffer[y * width * 3 + x * 3 + 2] = pSrcBuffer[(height-1)*width-1];
-
-			x = 0;   
-			y = height -1;
-			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[width];
-			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[0] + pSrcBuffer[width+1] )/2;
-			pDstBuffer[y * width * 3 + x * 3 + 2] = pSrcBuffer[1];
-
-			x = width - 1;
-			y = height - 1;
-			pDstBuffer[y * width * 3 + x * 3 + 0] =  pSrcBuffer[width*2-2];
-			pDstBuffer[y * width * 3 + x * 3 + 1] =  ( pSrcBuffer[width*2 -1] +  pSrcBuffer[width-2] )/2;
-			pDstBuffer[y * width * 3 + x * 3 + 2] =  pSrcBuffer[width -1];
-			
-
-			//for boundary case
-		    for( x = 1; x < width -1; x++ )
-			{
-				if( x%2 == 1 )
-				{
-					y = 0;                                             
-					i = ( height -1  )*width + x;  //G                       
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = (  pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i] + pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] )/3;      
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i-width]; 
-						
-						
-					y = height - 1;                                      
-					i = x;       //R               
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/2;          
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+width] + pSrcBuffer[i+1])/3;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i];    
-
-				}
-				else
-				{
-					y = 0;                                             
-					i = ( height -1  )*width + x;  //B                     
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i];      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  (  pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+1])/3 ;      
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] )/2; 
-					
-					
-					y = height - 1;                                      
-					i = x;                      
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i+width] ;          
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/3 ;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;    
-				}
-			}
- 
-			for( y = 1; y < height - 1; y++ )
-			{
-				if( y%2 == 1 )
-				{
-					x = 0;                                             
-					i = ( height -1 - y )*width;  //G                     
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = (  pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width+1] )/3;      
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i+1]; 
-					
-					
-					x = width -1;                                      
-					i = ( height - 1 - y)* width + x; //R                     
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-width-1] + pSrcBuffer[i+width-1] )/2;          
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i-1])/3;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i];   
-
-				}
-				else
-				{
-					x = 0;                                             
-					i = ( height -1 - y )*width;                       
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i];      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  (  pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i+1])/3 ;      
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-width+1] + pSrcBuffer[i+width+1] )/2; 
-					
-					
-					x = width -1;                                      
-					i = ( height - 1 - y)* width + x;                      
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i-1] ;          
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = (  pSrcBuffer[i] + pSrcBuffer[i-width-1] + pSrcBuffer[i+width-1])/3;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;  
-
-				}
-			}
-			
-			//other area
-			for( y = 1; y < height -1; y++ )
-			{
-				for( x = 1; x < width -1; x++ )
-				{
-					i = ( height -1 -y)*width + x;
-
-					if( y%2 == 1 )
-					{
-						if( x%2 == 1 ) //R
-						{
-							pDstBuffer[y * width * 3 + x * 3 + 0] = ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/4;
-							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i-1] + pSrcBuffer[i+1])/4;
-							pDstBuffer[y * width * 3 + x * 3 + 2] =  pSrcBuffer[i];
- 
-						}
-						else     //G1
-						{
-							pDstBuffer[y * width * 3 + x * 3 + 0] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;
-							pDstBuffer[y * width * 3 + x * 3 + 1] =   (pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;
-							pDstBuffer[y * width * 3 + x * 3 + 2] = ( pSrcBuffer[i-1] + pSrcBuffer[i+1])/2; 
-						}
-					}
-					else
-					{
-						if( x%2 == 1 ) //G2
-						{   
-							pDstBuffer[ y * width * 3 + x * 3 + 0 ] =   ( pSrcBuffer[i-1] + pSrcBuffer[i+1])/2;     
-							pDstBuffer[ y * width * 3 + x * 3 + 1 ] =    ( pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;  
-							pDstBuffer[ y * width * 3 + x * 3 + 2 ] =   ( pSrcBuffer[i-width] + pSrcBuffer[i+width])/2;
-
-						}
-						else //B
-						{
-							pDstBuffer[ y * width * 3 + x * 3 + 0 ] =   pSrcBuffer[i];     
-							pDstBuffer[ y * width * 3 + x * 3 + 1 ] =   ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] )/4;  
-							pDstBuffer[ y * width * 3 + x * 3 + 2 ] =   ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/4; 
-						}
-
-					}
-				}
-
-			} 
-		}
-		break;
-
-	case 2:   //GBRG
-		{
-			//corner case
-			x = 0;
-			y = 0;
-			i = (height-1)*width;
-			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[i-width+1]; //B
-			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i+1] )/2; //G
-			pDstBuffer[y * width * 3 + x * 3 + 2] =   pSrcBuffer[i]; //R
-
-			x = width -1;
-			y = 0;			 
-			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[(height - 1)*width-1];
-			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[(height-1)*width-2] + pSrcBuffer[height*width-1] )/2;
-			pDstBuffer[y * width * 3 + x * 3 + 2] = pSrcBuffer[ height*width-2];
-
-			x = 0;   
-			y = height -1;
-			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[1];
-			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[0] + pSrcBuffer[width +1 ] )/2;
-			pDstBuffer[y * width * 3 + x * 3 + 2] = pSrcBuffer[width];
-
-			x = width -1;
-			y = height -1;
-			pDstBuffer[y * width * 3 + x * 3 + 0] =  pSrcBuffer[width-1];
-			pDstBuffer[y * width * 3 + x * 3 + 1] =  ( pSrcBuffer[width-2] +  pSrcBuffer[width*2-1] )/2;
-			pDstBuffer[y * width * 3 + x * 3 + 2] =  pSrcBuffer[width*2 -2];
-			
-
-			//for boundary case
-		    for( x = 1; x < width -1; x++ )
-			{
-				if( x%2 == 1 )
-				{
-					y = 0;                                             
-					i = ( height -1  )*width + x;                       
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[i-width];      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i] )/3;      
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2; 
-						
-						
-					y = height - 1;                                      
-					i = x;                      
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i];          
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] + pSrcBuffer[i+width])/3;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/2;    
-
-				}
-				else
-				{
-					y = 0;                                             
-					i = ( height -1  )*width + x;                       
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] )/2;      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  (  pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+1])/3 ;      
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i]; 
-					
-					
-					y = height - 1;                                      
-					i = x;                      
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1]  )/2 ;          
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/3 ;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i+width];    
-				}
-			}
- 
-			for( y = 1; y < height - 1; y++ )
-			{
-				if( y%2 == 1 )
-				{
-					x = 0;                                             
-					i = ( height -1 - y )*width;                       
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i+1];      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i] + pSrcBuffer[i-width+1]+ pSrcBuffer[i+width+1])/3;      
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width])/2;//Here 
-					
-					
-					x = width -1;                                      
-					i = ( height - 1 - y)* width + x;                      
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i];          
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+width])/3;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-width-1] + pSrcBuffer[i+width-1] )/2;   
-
-				}
-				else
-				{
-					x = 0;                                             
-					i = ( height -1 - y )*width;                       
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-width+1] + pSrcBuffer[i+width+1] )/2;      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  (  pSrcBuffer[i-width] + pSrcBuffer[i+1] + pSrcBuffer[i+width])/3 ;      
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i]; 
-					
-					
-					x = width -1;                                      
-					i = ( height - 1 - y)* width + x;                      
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2 ;          
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = (  pSrcBuffer[i-width-1] + pSrcBuffer[i] + pSrcBuffer[i+width-1])/3;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i-1];  
-
-				}
-			}
-			
-			//other area
-			for( y = 1; y < height -1; y++ )
-			{
-				for( x = 1; x < width -1; x++ )
-				{
-					i = ( height -1 -y)*width + x;
-
-					if( y%2 == 1 )
-					{
-						if( x%2 == 1 )  
-						{
-							//B
-							pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[i];
-							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] + pSrcBuffer[i+width])/4;
-							pDstBuffer[y * width * 3 + x * 3 + 2] = (pSrcBuffer[i-width-1] +pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1])/4;
- 
-						}
-						else      
-						{
-							pDstBuffer[y * width * 3 + x * 3 + 0] = ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;
-							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;
-							pDstBuffer[y * width * 3 + x * 3 + 2] = ( pSrcBuffer[i-width] +  + pSrcBuffer[i+width])/2; 
-						}
-					}
-					else
-					{
-						if( x%2 == 1 )  
-						{   
-							pDstBuffer[ y * width * 3 + x * 3 + 0 ] =   ( pSrcBuffer[i-width] + pSrcBuffer[i+width])/2;     
-							pDstBuffer[ y * width * 3 + x * 3 + 1 ] =     ( pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;  
-							pDstBuffer[ y * width * 3 + x * 3 + 2 ] =   ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;
-
-						}
-						else  
-						{
-							pDstBuffer[ y * width * 3 + x * 3 + 0 ] =   ( pSrcBuffer[i-width-1] +pSrcBuffer[i-width+1]+ pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1])/4;     
-							pDstBuffer[ y * width * 3 + x * 3 + 1 ] =   ( pSrcBuffer[i-width] + pSrcBuffer[i+width]   + pSrcBuffer[i-1] + pSrcBuffer[i+1] )/4;  
-							pDstBuffer[ y * width * 3 + x * 3 + 2 ] =   pSrcBuffer[i]; 
-						}
-
-					}
-				}
-
-			}
-
-		}
-		break;
-
-		
-
-	case 3:  //BGGR		
-		//////////////////////////////////////
-		{
-			//corner case
-			x = 0;
-			y = 0;
-			i = (height-1)*width;
-			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[i-width]; //B
-			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i] + pSrcBuffer[i-width+1] )/2;  
-			pDstBuffer[y * width * 3 + x * 3 + 2] =   pSrcBuffer[i+1]; //R
-
-			x = width -1;
-			y = 0;			 
-			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[(height - 1)*width-2];
-			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[height*width-2] + pSrcBuffer[(height-1)*width-1] )/2;
-			pDstBuffer[y * width * 3 + x * 3 + 2] = pSrcBuffer[ height*width-1];
-
-			x = 0;   
-			y = height -1;
-			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[0];
-			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[1] + pSrcBuffer[width] )/2;
-			pDstBuffer[y * width * 3 + x * 3 + 2] = pSrcBuffer[width+1];
-
-			x = width -1;
-			y = height -1;
-			pDstBuffer[y * width * 3 + x * 3 + 0] =  pSrcBuffer[width-2];
-			pDstBuffer[y * width * 3 + x * 3 + 1] =  ( pSrcBuffer[width-1] +  pSrcBuffer[width*2-2] )/2;
-			pDstBuffer[y * width * 3 + x * 3 + 2] =  pSrcBuffer[width*2 -1];
-			
-
-			//for boundary case
-		    for( x = 1; x < width -1; x++ )
-			{
-				if( x%2 == 1 )
-				{
-					y = 0;                                             
-					i = ( height -1  )*width + x;                       
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = (  pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] )/2;      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] )/3;      
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i]; 
-						
-						
-					y = height - 1;                                      
-					i = x;                      
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;          
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1])/3;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i+width];    
-
-				}
-				else
-				{
-					y = 0;                                             
-					i = ( height -1  )*width + x;                       
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i-width];      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  (  pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i])/3 ;      
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2; 
-					
-					
-					y = height - 1;                                      
-					i = x;                      
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i] ;          
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] + pSrcBuffer[i+width] )/3 ;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/2;    
-				}
-			}
- 
-			for( y = 1; y < height - 1; y++ )
-			{
-				if( y%2 == 1 )
-				{
-					x = 0;                                             
-					i = ( height -1 - y )*width;                       
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[i];      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+1] + pSrcBuffer[i+width] )/3;      
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  (pSrcBuffer[i-width+1] + pSrcBuffer[i+width+1])/2; 
-					
-					
-					x = width -1;                                      
-					i = ( height - 1 - y)* width + x;                      
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i-1];          
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-width-1] + pSrcBuffer[i] + pSrcBuffer[i+width-1])/3;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;   
-
-				}
-				else
-				{
-					x = 0;                                             
-					i = ( height -1 - y )*width;                       
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;      
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  (  pSrcBuffer[i-width+1] + pSrcBuffer[i] + pSrcBuffer[i+width+1])/3 ;      
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i+1]; 
-					
-					
-					x = width -1;                                      
-					i = ( height - 1 - y)* width + x;                      
-					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-width-1] + pSrcBuffer[i+width-1] )/2 ;          
-					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = (  pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+width])/3;        
-					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i];  
-
-				}
-			}
-			
-			//other area
-			for( y = 1; y < height -1; y++ )
-			{
-				for( x = 1; x < width -1; x++ )
-				{
-					i = ( height -1 -y)*width + x;
-
-					if( y%2 == 1 )
-					{
-						if( x%2 == 1 )  
-						{
-							pDstBuffer[y * width * 3 + x * 3 + 0] = ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;
-							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;
-							pDstBuffer[y * width * 3 + x * 3 + 2] = (pSrcBuffer[i-width] + pSrcBuffer[i+width])/2;
- 
-						}
-						else      
-						{
-							pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[i];
-							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] + pSrcBuffer[i+width ] )/4;
-							pDstBuffer[y * width * 3 + x * 3 + 2] = ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1])/4; 
-						}
-					}
-					else
-					{
-						if( x%2 == 1 )  
-						{   
-							pDstBuffer[ y * width * 3 + x * 3 + 0 ] =   ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1])/4;     
-							pDstBuffer[ y * width * 3 + x * 3 + 1 ] =   ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] )/4;  
-							pDstBuffer[ y * width * 3 + x * 3 + 2 ] =   pSrcBuffer[i];
-
-						}
-						else  
-						{
-							pDstBuffer[ y * width * 3 + x * 3 + 0 ] =   ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;     
-							pDstBuffer[ y * width * 3 + x * 3 + 1 ] =   ( pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;  
-							pDstBuffer[ y * width * 3 + x * 3 + 2 ] =   ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2; 
-						}
-
-					}
-				}
-
-			} 
-
-		}
-		break;
-	} 
-}
-
-BOOL Cell10ToRaw10(unsigned char* cell10buf, int width, int height)
-{
-
-	for (int i = 2; i < width * height * 2; i += 8)
-	{
-		unsigned char temp = 0;
-		//低位互换
-		temp = cell10buf[i];
-		cell10buf[i] = cell10buf[i + 2];
-		cell10buf[i + 2] = temp;
-		//高位互换
-		temp = cell10buf[i + 1];
-		cell10buf[i + 1] = cell10buf[i + 3];
-		cell10buf[i + 3] = temp;
-	}
-	
-	for (int i = 1; i < height; i += 4)
-	{
-		for (int j = 0; j < width * 2; j++)
-		{
-			unsigned char temp = 0;
-			//行转换
-			temp = cell10buf[i * width * 2 + j];
-			cell10buf[i * width * 2 + j] = cell10buf[(i + 1) * width * 2 + j];
-			cell10buf[(i + 1) * width * 2 + j] = temp;
-		}
-	}
-	if (cell10buf != NULL)
-	{
-		return TRUE;
-	}
-	return FALSE;
-}
-
-BOOL Cell8ToRaw8(unsigned char* cell8buf, int width, int height)
-{
-	for (int i = 0; i < height; i++)
-	{
-		for (int j = 0; j < width; j++)
-		{
-			unsigned char temp = 0;
-			//列转换
-			if (i % 4 == 2)
-			{
-				temp = cell8buf[i * width + j];
-				cell8buf[i * width + j] = cell8buf[(i - 1) * width + j];
-				cell8buf[(i - 1) * width + j] = temp;
-			}
-		}
-	}
-	for (int i = 0; i < height; i++)
-	{
-		for (int j = 0; j < width; j++)
-		{
-			unsigned char temp = 0;
-			//行转换
-			if (j % 4 == 1)
-			{
-				temp = cell8buf[i * width + j];
-				cell8buf[i * width + j] = cell8buf[i * width + j + 1];
-				cell8buf[i * width + j + 1] = temp;
-			}
-		}
-	}
-	if (cell8buf != NULL)
-	{
-		return TRUE;
-	}
-	return FALSE;
-}
-
 #if 0
 
 
@@ -1333,6 +590,7 @@ BOOL CPicConversionDlg::OV16A1QTools(unsigned char* src, unsigned char* dst, int
 
 #endif
 
+//一般是log.txt转bin文件
 void CPicConversionDlg::OnBnClickedButton1()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -1465,6 +723,7 @@ end:
 		MessageBox(L"文件转换失败！！！");
 }
 
+//左旋90度
 void CPicConversionDlg::OnBnClickedButton2()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -1479,109 +738,61 @@ void CPicConversionDlg::OnBnClickedButton2()
 		CString fileTitle = dlg.GetFileTitle();
 		CString NFileName = fileTitle + "_rota.raw";
 		USES_CONVERSION;
+		int size = 0;
+		CFileStatus fileStatus;
+		if (CFile::GetStatus(fileName, fileStatus))
+		{
+			size = fileStatus.m_size;
+		}
+		if (size == 0)
+		{
+			AfxMessageBox(L"文件长度为零！");
+			return;
+		}
+
 		SetCurrentDirectoryA(T2A(dirPath));
-
-		unsigned char *raw8buf;
-		raw8buf = new unsigned char[m_Width * m_Height];
-		unsigned char *raw8buf2;
-		raw8buf2 = new unsigned char[m_Width * m_Height];
-		
-		FILE *file;
-		file = fopen(T2A(fileName), "rb");
-		fread(raw8buf, 1, m_Width * m_Height, file);
-		fclose(file);
-		RAngleRotation(raw8buf, raw8buf2, m_Width, m_Height);
-		file = fopen(T2A(NFileName), "wb");
-		fwrite(raw8buf2, 1, m_Width * m_Height, file);
-		fclose(file);
-		delete[] raw8buf;
-		delete[] raw8buf2;
-	}
-}
-
-/*************************
- *
- *	坐标之间的关系
- *
- *	width * height
- *	==============>
- *	heigth * width
- *
- *	old			new
- *	(h1, w1)	(h2, w2)
- *
- *	h1 + w2 = height - 1;
- *
- *	h2 = w1;
- *	
- *************************/
-void RAngleRotation(unsigned char *src, unsigned char *dst, int width, int height)
-{
-	for (int h = 0; h < width; h++)
-	{
-		for (int w = 0; w < height; w++)
+		if (size == m_Width * m_Height)
 		{
-			dst[h * height + w] = src[(height - w - 1) * width + h];
+			unsigned char *raw8buf;
+			raw8buf = new unsigned char[m_Width * m_Height];
+			unsigned char *raw8buf2;
+			raw8buf2 = new unsigned char[m_Width * m_Height];
+			FILE *file;
+			file = fopen(T2A(fileName), "rb");
+			fread(raw8buf, 1, m_Width * m_Height, file);
+			fclose(file);
+			RAngleRotation(raw8buf, raw8buf2, m_Width, m_Height);
+			file = fopen(T2A(NFileName), "wb+");
+			fwrite(raw8buf2, 1, m_Width * m_Height, file);
+			fclose(file);
+			delete[] raw8buf;
+			delete[] raw8buf2;
+		}
+		else if (size == m_Width * m_Height * 2)
+		{
+			USHORT *raw10buf;
+			raw10buf = new USHORT[m_Width * m_Height];
+			USHORT *raw10buf2;
+			raw10buf2 = new USHORT[m_Width * m_Height];
+			FILE *file;
+			file = fopen(T2A(fileName), "rb");
+			fread(raw10buf, 2, m_Width * m_Height, file);
+			fclose(file);
+			RAngleRotation(raw10buf, raw10buf2, m_Width, m_Height);
+			file = fopen(T2A(NFileName), "wb+");
+			fwrite(raw10buf2, 2, m_Width * m_Height, file);
+			fclose(file);
+			delete[] raw10buf;
+			delete[] raw10buf2;
+		}
+		else
+		{
+			AfxMessageBox(L"不支持此图片！");
 		}
 	}
 }
 
-/*************************
- *
- *	转置
- *	坐标之间的关系
- *
- *	width * height
- *	==============>
- *	heigth * width
- *
- *	old			new
- *	(h1, w1)	(h2, w2)
- *
- *	w2 = h1;
- *
- *	h2 = w1;
- *	
- *************************/
-void Transpose(unsigned char *src, unsigned char *dst, int width, int height)
-{
-	for (int h = 0; h < width; h++)
-	{
-		for (int w = 0; w < height; w++)
-		{
-			dst[h * height + w] = src[w * width + h];
-		}
-	}
-}
-
-/*************************
- *
- *	镜像
- *	坐标之间的关系
- *
- *	width * height
- *	==============>
- *	heigth * width
- *
- *	old			new
- *	(h1, w1)	(h2, w2)
- *
- *	w1 + w2 = width - 1;
- *
- *	h1 = h2;
- *	
- *************************/
-void mirrorTrans(unsigned char *src, unsigned char *dst, int width, int height)
-{
-	for (int h = 0; h < height; h++)
-	{
-		for (int w = 0; w < width; w++)
-		{
-			dst[h * width + w] = src[h * width + width - w - 1];
-		}
-	}
-}
-
+//转置
 void CPicConversionDlg::OnBnClickedButton3()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -1596,26 +807,61 @@ void CPicConversionDlg::OnBnClickedButton3()
 		CString fileTitle = dlg.GetFileTitle();
 		CString NFileName = fileTitle + "_tran.raw";
 		USES_CONVERSION;
+		int size = 0;
+		CFileStatus fileStatus;
+		if (CFile::GetStatus(fileName, fileStatus))
+		{
+			size = fileStatus.m_size;
+		}
+		if (size == 0)
+		{
+			AfxMessageBox(L"文件长度为零！");
+			return;
+		}
+		
 		SetCurrentDirectoryA(T2A(dirPath));
-
-		unsigned char *raw8buf;
-		raw8buf = new unsigned char[m_Width * m_Height];
-		unsigned char *raw8buf2;
-		raw8buf2 = new unsigned char[m_Width * m_Height];
-
-		FILE *file;
-		file = fopen(T2A(fileName), "rb");
-		fread(raw8buf, 1, m_Width * m_Height, file);
-		fclose(file);
-		Transpose(raw8buf, raw8buf2, m_Width, m_Height);
-		file = fopen(T2A(NFileName), "wb+");
-		fwrite(raw8buf2, 1, m_Width * m_Height, file);
-		fclose(file);
-		delete[] raw8buf;
-		delete[] raw8buf2;
+		if (size == m_Width * m_Height)
+		{
+			unsigned char *raw8buf;
+			raw8buf = new unsigned char[m_Width * m_Height];
+			unsigned char *raw8buf2;
+			raw8buf2 = new unsigned char[m_Width * m_Height];
+			FILE *file;
+			file = fopen(T2A(fileName), "rb");
+			fread(raw8buf, 1, m_Width * m_Height, file);
+			fclose(file);
+			Transpose(raw8buf, raw8buf2, m_Width, m_Height);
+			file = fopen(T2A(NFileName), "wb+");
+			fwrite(raw8buf2, 1, m_Width * m_Height, file);
+			fclose(file);
+			delete[] raw8buf;
+			delete[] raw8buf2;
+		}
+		else if (size == m_Width * m_Height * 2)
+		{
+			USHORT *raw10buf;
+			raw10buf = new USHORT[m_Width * m_Height];
+			USHORT *raw10buf2;
+			raw10buf2 = new USHORT[m_Width * m_Height];
+			FILE *file;
+			file = fopen(T2A(fileName), "rb");
+			fread(raw10buf, 2, m_Width * m_Height, file);
+			fclose(file);
+			Transpose(raw10buf, raw10buf2, m_Width, m_Height);
+			file = fopen(T2A(NFileName), "wb+");
+			fwrite(raw10buf2, 2, m_Width * m_Height, file);
+			fclose(file);
+			delete[] raw10buf;
+			delete[] raw10buf2;
+		}
+		else
+		{
+			AfxMessageBox(L"不支持此图片！");
+		}
 	}
 }
 
+//镜像
 void CPicConversionDlg::OnBnClickedButton4()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -1630,27 +876,61 @@ void CPicConversionDlg::OnBnClickedButton4()
 		CString fileTitle = dlg.GetFileTitle();
 		CString NFileName = fileTitle + "_mirror.raw";
 		USES_CONVERSION;
+		int size = 0;
+		CFileStatus fileStatus;
+		if (CFile::GetStatus(fileName, fileStatus))
+		{
+			size = fileStatus.m_size;
+		}
+		if (size == 0)
+		{
+			AfxMessageBox(L"文件长度为零！");
+			return;
+		}
+
 		SetCurrentDirectoryA(T2A(dirPath));
-
-		unsigned char *raw8buf;
-		raw8buf = new unsigned char[m_Width * m_Height];
-		unsigned char *raw8buf2;
-		raw8buf2 = new unsigned char[m_Width * m_Height];
-
-		FILE *file;
-		file = fopen(T2A(fileName), "rb");
-		fread(raw8buf, 1, m_Width * m_Height, file);
-		fclose(file);
-		mirrorTrans(raw8buf, raw8buf2, m_Width, m_Height);
-		file = fopen(T2A(NFileName), "wb+");
-		fwrite(raw8buf2, 1, m_Width * m_Height, file);
-		fclose(file);
-		delete[] raw8buf;
-		delete[] raw8buf2;
+		if (size == m_Width * m_Height)
+		{
+			unsigned char *raw8buf;
+			raw8buf = new unsigned char[m_Width * m_Height];
+			unsigned char *raw8buf2;
+			raw8buf2 = new unsigned char[m_Width * m_Height];
+			FILE *file;
+			file = fopen(T2A(fileName), "rb");
+			fread(raw8buf, 1, m_Width * m_Height, file);
+			fclose(file);
+			mirrorTrans(raw8buf, raw8buf2, m_Width, m_Height);
+			file = fopen(T2A(NFileName), "wb+");
+			fwrite(raw8buf2, 1, m_Width * m_Height, file);
+			fclose(file);
+			delete[] raw8buf;
+			delete[] raw8buf2;
+		}
+		else if (size == m_Width * m_Height * 2)
+		{
+			USHORT *raw10buf;
+			raw10buf = new USHORT[m_Width * m_Height];
+			USHORT *raw10buf2;
+			raw10buf2 = new USHORT[m_Width * m_Height];
+			FILE *file;
+			file = fopen(T2A(fileName), "rb");
+			fread(raw10buf, 2, m_Width * m_Height, file);
+			fclose(file);
+			mirrorTrans(raw10buf, raw10buf2, m_Width, m_Height);
+			file = fopen(T2A(NFileName), "wb+");
+			fwrite(raw10buf2, 2, m_Width * m_Height, file);
+			fclose(file);
+			delete[] raw10buf;
+			delete[] raw10buf2;
+		}
+		else
+		{
+			AfxMessageBox(L"不支持此图片！");
+		}
 	}
 }
 
-
+//bin转log.txt
 void CPicConversionDlg::OnBnClickedButton5()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -1684,293 +964,8 @@ void CPicConversionDlg::OnBnClickedButton5()
 		fclose(file);
 		SetOTPLog(L"xufuxing", 0, size - 1, data, filetitle, &bin);
 	}
-#if 0
-
-
-	CString iniPath = L"F:\\Project\\A_VC++_Text\\MFC_ShowBMP\\MFC_ShowBMP\\OTP_LOG\\HISI_GOLDEN.ini"; 
-
-
-	USES_CONVERSION;
-	USHORT data[0x2000] = {0};
-	CTime time = CTime::GetCurrentTime();
-	char tmp1[11],tmp2[11];
-	GetPrivateProfileStringA("Hisi","SN","e",tmp1,11,T2A(iniPath));
-	CString m_serialName(tmp1);
-	//year
-	if (m_serialName.GetAt(3) == 0x39)
-	{
-		data[0x0] = m_serialName.GetAt(3) - 0x30 + 10;
-	} 
-	else
-	{
-		data[0x0] = m_serialName.GetAt(3) - 0x30 + 20;
-	}//年正确有效期2019-2028年
-	//month
-	CString a=m_serialName.Mid(4,1);
-	if (atoi(T2A(m_serialName.Mid(4,1))) <= 9)
-	{
-		data[0x1] = atoi(T2A(m_serialName.Mid(4,1)));
-	} 
-	else
-	{
-		data[0x1] = m_serialName.GetAt(4) - 0x41 + 10;
-	}
-	//day
-	if (m_serialName.GetAt(5) < 0x41)
-	{
-		data[0x2] = m_serialName.GetAt(5) - 0x30;
-	} 
-	else if(m_serialName.GetAt(5) >= 0x41 && m_serialName.GetAt(5) <= 0x48)
-	{
-		data[0x2] = m_serialName.GetAt(5) - 0x41 + 10;
-	}
-	else if(m_serialName.GetAt(5) >= 0x4A && m_serialName.GetAt(5) <= 0x4E)
-	{
-		data[0x2] = m_serialName.GetAt(5) - 0x4A + 18;
-	}
-	else
-	{
-		data[0x2] = m_serialName.GetAt(5) - 0x50 + 23;
-	}
-
-
-
-	int sum = 0,sumMID = 0;
-	for (int i = 0; i < 16; i++)
-	{
-		if (i < 10)
-		{
-			data[0x15 + i] = m_serialName.GetAt(i);
-		}
-		else
-		{
-			data[0x15 + i] = '0';
-		}
-	}
-	for (int i = 0x00;i < 0x24;i++)
-	{
-		sum += data[i];
-	}
-	//data[0x24] = ((sum % 0xffff) >>8) & 0xff;
-	data[0x25] = (sum % 255);
-
-
-
-	/* Hisi ISO、AWB*/
-
-	data[0x0026] = (GetPrivateProfileIntW(L"Hisi",L"iso_gain",0xA0,iniPath) >>8) & 0xff;
-	data[0x0027] = GetPrivateProfileIntW(L"Hisi",L"iso_gain",0xA0,iniPath) & 0xff;
-
-	/* Hisi LSC */ 
-
-
-	
-	FILE *file;
-	CString filter;
-	CString sFilePath;
-	filter="所有文件(*.*)|*.txt|||";
-	CFileDialog dlg(1,NULL,NULL,OFN_HIDEREADONLY|OFN_OVERWRITEPROMPT,filter,NULL);
-	if(dlg.DoModal()==IDOK)
-	{
-		sFilePath=dlg.GetPathName();  
-	}
-	else
-	{
-		return;
-	}
-	char *hisi_Shading_otpPath = T2A(sFilePath);
-	fopen_s(&file,hisi_Shading_otpPath,"rb+");
-	if (file == NULL)
-	{
-		return;
-	}
-
-	BYTE shading[2737] = {0};
-	fread(&shading,1,2737,file); 
-	fclose(file);
-	for (int i = 0x0038 ; i < 0x0AE9;i++)
-	{
-		data[i] = shading[i - 0x0038];
-	}
-
-	/* Hisi LSC Station Information */
-	data[0x0AEB] = time.GetYear() - 2000;
-	data[0x0AEC] = time.GetMonth();
-	data[0x0AED] = time.GetDay();
-	data[0x0AEE] = time.GetHour();
-	data[0x0AEF] = 0x01;
-	data[0x0AF0] = 0x01;
-	sum = 0;
-	for (int i = 0x38 ; i < 0x0AF2;i++)
-	{
-		sum += data[i];
-	}
-	data[0x0AF2] = (sum % 255);
-
-	/* Reserved for Hisi */
-	for (int i = 0x0AF3 ; i < 0x0CE7;i++)
-	{
-		data[i] = 0x00;
-	} 
-
-	/* Hisi Total Checksum */
-	sum = 0;
-	for (int i = 0x0000 ; i < 0x0CE8;i++)
-	{
-		sum += data[i];
-	}
-	data[0x0CE8] = (sum % 255);   
-	CString save_path;
-	save_path.Format(L"Hisi_%s",m_serialName);
-	BYTE type[2] = {0x02,0x00};
-	SetOTPLog(L"DATA",0x0000,0x0CE8,data,save_path,type);
-	
-#endif
 }
 
-#if 0
-
-
-void CMFC_ShowBMPDlg::OnBnClickedButton11()
-{
-	CString iniPath = L"F:\\Project\\A_VC++_Text\\MFC_ShowBMP\\MFC_ShowBMP\\OTP_LOG\\HISI_GOLDEN.ini"; 
-
-
-	USES_CONVERSION;
-	USHORT data[0x2000] = {0};
-	CTime time = CTime::GetCurrentTime();
-	char tmp1[11],tmp2[11];
-	GetPrivateProfileStringA("Hisi","SN","e",tmp1,11,T2A(iniPath));
-	CString m_serialName(tmp1);
-	//year
-	if (m_serialName.GetAt(3) == 0x39)
-	{
-		data[0x0] = m_serialName.GetAt(3) - 0x30 + 10;
-	} 
-	else
-	{
-		data[0x0] = m_serialName.GetAt(3) - 0x30 + 20;
-	}//年正确有效期2019-2028年
-	//month
-	CString a=m_serialName.Mid(4,1);
-	if (atoi(T2A(m_serialName.Mid(4,1))) <= 9)
-	{
-		data[0x1] = atoi(T2A(m_serialName.Mid(4,1)));
-	} 
-	else
-	{
-		data[0x1] = m_serialName.GetAt(4) - 0x41 + 10;
-	}
-	//day
-	if (m_serialName.GetAt(5) < 0x41)
-	{
-		data[0x2] = m_serialName.GetAt(5) - 0x30;
-	} 
-	else if(m_serialName.GetAt(5) >= 0x41 && m_serialName.GetAt(5) <= 0x48)
-	{
-		data[0x2] = m_serialName.GetAt(5) - 0x41 + 10;
-	}
-	else if(m_serialName.GetAt(5) >= 0x4A && m_serialName.GetAt(5) <= 0x4E)
-	{
-		data[0x2] = m_serialName.GetAt(5) - 0x4A + 18;
-	}
-	else
-	{
-		data[0x2] = m_serialName.GetAt(5) - 0x50 + 23;
-	}
-
-
-
-	int sum = 0,sumMID = 0;
-	for (int i = 0; i < 16; i++)
-	{
-		if (i < 10)
-		{
-			data[0x15 + i] = m_serialName.GetAt(i);
-		}
-		else
-		{
-			data[0x15 + i] = '0';
-		}
-	}
-	for (int i = 0x00;i < 0x24;i++)
-	{
-		sum += data[i];
-	}
-	//data[0x24] = ((sum % 0xffff) >>8) & 0xff;
-	data[0x25] = (sum % 255);
-
-
-
-	/* Hisi ISO、AWB*/
-
-	data[0x0026] = (GetPrivateProfileIntW(L"Hisi",L"iso_gain",0xA0,iniPath) >>8) & 0xff;
-	data[0x0027] = GetPrivateProfileIntW(L"Hisi",L"iso_gain",0xA0,iniPath) & 0xff;
-
-	/* Hisi LSC */ 
-
-	FILE *file;
-	CString filter;
-	filter="所有文件(*.*)|*.txt|||";
-	CFileDialog dlg(1,NULL,NULL,OFN_HIDEREADONLY|OFN_OVERWRITEPROMPT,filter,NULL);
-	if(dlg.DoModal()==IDOK)
-	{
-		sFilePath=dlg.GetPathName();  
-
-	}
-	else
-	{
-		return;
-	}
-	char *hisi_Shading_otpPath = T2A(sFilePath);
-	fopen_s(&file,hisi_Shading_otpPath,"rb+");
-	if (file == NULL)
-	{
-		return;
-	}
-
-	BYTE shading[2737] = {0};
-	fread(&shading,1,2737,file); 
-	fclose(file);
-	for (int i = 0x0038 ; i < 0x0AE9;i++)
-	{
-		data[i] = shading[i - 0x0038];
-	}
-
-	/* Hisi LSC Station Information */
-	data[0x0AEB] = time.GetYear() - 2000;
-	data[0x0AEC] = time.GetMonth();
-	data[0x0AED] = time.GetDay();
-	data[0x0AEE] = time.GetHour();
-	data[0x0AEF] = 0x01;
-	data[0x0AF0] = 0x01;
-	sum = 0;
-	for (int i = 0x38 ; i < 0x0AF2;i++)
-	{
-		sum += data[i];
-	}
-	data[0x0AF2] = (sum % 255);
-
-	/* Reserved for Hisi */
-	for (int i = 0x0AF3 ; i < 0x0CE7;i++)
-	{
-		data[i] = 0x00;
-	} 
-
-	/* Hisi Total Checksum */
-	sum = 0;
-	for (int i = 0x0000 ; i < 0x0CE8;i++)
-	{
-		sum += data[i];
-	}
-	data[0x0CE8] = (sum % 255);   
-	CString save_path;
-	save_path.Format(L"Hisi_%s",m_serialName);
-	BYTE type[2] = {0x02,0x00};
-	SetOTPLog(L"DATA",0x0000,0x0CE8,data,save_path,type);
-}
-
-#endif
 
 void CPicConversionDlg::SetOTPLog(CString title,int addr_start,int addr_end,UCHAR *val,CString filename,BYTE* val_byte)
 {
@@ -2019,6 +1014,7 @@ void CPicConversionDlg::SetOTPLog(CString title,int addr_start,int addr_end,UCHA
 	return;
 }
 
+//10bitRaw图各个通道值输出
 void CPicConversionDlg::OnBnClickedButton6()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -2280,17 +1276,980 @@ save_data:		fprintf(out_file,"%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f
 }
 
 
+//单个图片转换
 void CPicConversionDlg::OnBnClickedButton8()
 {
 	// TODO: 在此添加控件通知处理程序代码
+	UpdateData(TRUE);
+	if (m_Width <= 0 || m_Height <= 0)
+	{
+		AfxMessageBox(L"宽或高不符合规格");
+		return;
+	}
+	BYTE* raw8buf = new BYTE[m_Width * m_Height];
+	BYTE* raw10buf = new BYTE[m_Width * m_Height * 2];
+	BYTE* bmpbuf = new BYTE[m_Width * m_Height * 3];
 	CString filter = L"(*.raw)|*.raw||";
 	CFileDialog dlg(TRUE, NULL, NULL, OFN_ALLOWMULTISELECT, filter, NULL);
 	if (IDCANCEL != dlg.DoModal())
 	{
-		CString filePath = dlg.GetFolderPath();
-		SetCurrentDirectory(filePath);
+		CString dirPath = dlg.GetFolderPath();
+		SetCurrentDirectory(dirPath);
+		CString filePath = dlg.GetPathName();
 		CString fileName = dlg.GetFileName();
+		
 		CString fileTitle = dlg.GetFileTitle();
-		Choice(fileName, fileTitle,)
+		int size;
+		CFileStatus fileStatus;
+		if (CFile::GetStatus(filePath, fileStatus))
+		{
+			size = fileStatus.m_size;
+		}
+		if (size == 0)
+		{
+			AfxMessageBox(L"文件长度为零！");
+			delete[] raw8buf;
+			delete[] raw10buf;
+			delete[] bmpbuf;
+			return;
+		}
+		BOOL state;
+		state = FALSE;
+		state = Choice(fileName, fileTitle,raw8buf, raw10buf, bmpbuf, size);
+		if (state == FALSE)
+		{
+			AfxMessageBox(L"转换失败");
+		}
+		else if (state == TRUE)
+		{
+			AfxMessageBox(L"转换成功");
+		}
+	}
+	delete[] raw8buf;
+	delete[] raw10buf;
+	delete[] bmpbuf;
+}
+
+BOOL Raw8ToRaw10(unsigned char* raw8, unsigned char* raw10, int width, int height)
+{
+	for (int i = 0; i < height; i++)
+	{
+		for (int j = 0; j < width; j++)
+		{
+			raw10[2 * (i * width + j)] = raw8[i * width + j] << 2;
+			raw10[2 * (i * width + j) + 1] = raw8[i * width + j] >> 6;
+		}
+	}
+	if (raw10 != NULL && raw10[0] == (raw8[0] << 2))
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
+BOOL Raw10ToRaw8(unsigned char* raw10, unsigned char* raw8, int width, int height)
+{
+	for (int i = 0; i < height; i++)
+	{
+		for (int j = 0; j < width; j++)
+		{
+			raw8[i * width + j] = raw10[2 * (i * width + j)] >> 2 | raw10[2 * (i * width + j) + 1] << 6;
+		}
+	}
+	if (raw8 != NULL && raw8[0] == (raw10[0] >> 2 | raw10[1] << 6))
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
+BOOL SaveBMP(unsigned char* bmpbuf, int width, int height, CString filetitle)
+{
+	int size;
+	size = width * height * 3;
+	BITMAPFILEHEADER bmpHeader;
+	bmpHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+	bmpHeader.bfReserved1 = 0;
+	bmpHeader.bfReserved2 = 0;
+	bmpHeader.bfSize = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER) + size;
+	bmpHeader.bfType = 0x4D42;
+
+	BITMAPINFOHEADER bmpInfo;
+	bmpInfo.biSize = sizeof(BITMAPINFOHEADER);
+	bmpInfo.biWidth = width;
+	bmpInfo.biHeight = height;
+	bmpInfo.biPlanes = 1;
+	bmpInfo.biBitCount = 24;
+	bmpInfo.biCompression = 0;
+	bmpInfo.biSizeImage = size;
+	bmpInfo.biXPelsPerMeter = 0;
+	bmpInfo.biYPelsPerMeter = 0;
+	bmpInfo.biClrUsed = 0;
+	bmpInfo.biClrImportant = 0;
+
+	if (bmpbuf == NULL)
+	{
+		return FALSE;
+	}
+	FILE *bmpFile;
+	USES_CONVERSION;
+	bmpFile = fopen(T2A(filetitle), "wb+");
+	fwrite(&bmpHeader, 1, sizeof(BITMAPFILEHEADER), bmpFile);
+	fwrite(&bmpInfo, 1, sizeof(BITMAPINFOHEADER), bmpFile);
+	fwrite(bmpbuf, 3, width * height, bmpFile);
+	fclose(bmpFile);
+	return TRUE;
+}
+
+void BayerConversionFlip( BYTE* pSrcBuffer, BYTE* pDstBuffer, int nImgWidth, int nImgHeight, int bayerType)
+{
+	int width = nImgWidth;
+	int height  = nImgHeight;
+
+	int x = 0; 
+	int y = 0;
+	int i = 0;
+
+
+	switch( bayerType )
+	{
+	case 0: //RGGB
+		{
+			//////////////////////////////			
+			///Corner case;
+			x = 0;
+			y = 0;
+			pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[(height-1)*width+1]; //B
+			pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[ (height-2)*width+1] + pSrcBuffer[(height-1)*width])/2; //G
+			pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[ (height-2)*width]; // R
+
+			x = width - 1;
+			y = 0;
+			pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[ height*width - 1 ]; 
+			pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[height*width -2] + pSrcBuffer[(height-1)*width-1] )/2;
+			pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[(height-1)*width - 2];
+
+			x = 0;
+			y = height - 1;
+			pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[width+1];
+			pDstBuffer[ y * width * 3 + x * 3 + 1 ] = (pSrcBuffer[1] + pSrcBuffer[width] )/2;
+			pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[0];
+
+			x = width - 1;
+			y = height - 1;
+			pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[width*2-1];
+			pDstBuffer[ y * width * 3 + x * 3 + 1 ]  = ( pSrcBuffer[width*2 -2] + pSrcBuffer[width -1 ] )/2;
+			pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[width-2];
+
+			//for boundary
+			for(x = 1; x < width -1; x++ )
+			{ 	
+				if( x%2 == 1 )
+				{
+					y = 0;
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[(height-1)*width+x]; //B
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[(height-1)*width+x-1] + pSrcBuffer[(height-1)*width+x+1] + pSrcBuffer[(height-2)*width+x] )/3; //G
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = ( pSrcBuffer[(height-2)*width+x-1] +  pSrcBuffer[(height-2)*width+x+1] )/2; //R
+
+					y = height -1;
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[width+x];
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[x] + pSrcBuffer[width+x-1] + pSrcBuffer[width+x+1] ) /3 ;
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = ( pSrcBuffer[x-1] + pSrcBuffer[x+1] )/2; 
+				}
+				else
+				{
+					y = 0;
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = ( pSrcBuffer[(height-1)*width+x-1] + pSrcBuffer[(height-1)*width+x+1] )/2; //B
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[(height-1)*width+x] + pSrcBuffer[(height-2)*width+x-1] + pSrcBuffer[(height-2)*width + x +1])/3; //G //Here
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[(height-2)*width+x];	//R
+
+					y = height -1;
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[width+x-1] + pSrcBuffer[width+x+1] )/2;
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[width+x] + pSrcBuffer[x-1] + pSrcBuffer[x+1] )/3 ;
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[x] ; 
+
+				} 
+			}
+
+			for(y = 1;  y < height - 1; y++ )
+			{
+				if( y%2 == 1 )
+				{
+					x = 0;
+					i = ( height -1 - y )*width;
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = ( pSrcBuffer[i-width+1] + pSrcBuffer[i+width+1] )/2;
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i+1] )/3;
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[i];
+
+
+					x = width -1;
+					i = ( height - 1 - y)* width + x;
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[i] + pSrcBuffer[i-width-1] + pSrcBuffer[i+width-1])/3;  //here 
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = pSrcBuffer[i-1];  
+				}
+				else
+				{
+					x = 0;                                             
+					i = ( height -1 - y )*width;                       
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[i+1];      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[i] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width+1])/3;          
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;         
+
+
+					x = width -1;                                      
+					i = ( height - 1 - y)* width + x;                      
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[i];      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i-1] )/3;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] = ( pSrcBuffer[i-width-1] + pSrcBuffer[i+width-1] )/2;  //Here
+
+				}
+			}
+
+
+			//other area
+			for( y = 1; y < height-1; y++ )
+			{
+				for( x=1; x < width-1; x++ )
+				{
+					i = (height-1-y)*width + x;
+
+					if( y%2 == 1 )
+					{
+						if( x%2 == 1 ) //G1
+						{
+							pDstBuffer[y * width * 3 + x * 3 + 0] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;
+							pDstBuffer[y * width * 3 + x * 3 + 1] =  ( pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;
+							pDstBuffer[y * width * 3 + x * 3 + 2] =  (pSrcBuffer[i-1] + pSrcBuffer[i+1])/2;//Here
+
+						}
+						else  //R
+						{
+							pDstBuffer[y * width * 3 + x * 3 + 0] = ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] ) / 4;
+							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] + pSrcBuffer[i+width]) / 4;
+							pDstBuffer[y * width * 3 + x * 3 + 2] =  pSrcBuffer[i]; 
+						}
+					}
+					else
+					{
+						if( x%2  == 1)  //B
+						{
+							pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[i];
+							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] ) /4;//Here
+							pDstBuffer[y * width * 3 + x * 3 + 2] = ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1]) /4;
+						}
+						else  //G2
+						{
+							pDstBuffer[y * width * 3 + x * 3 + 0] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;
+							pDstBuffer[y * width * 3 + x * 3 + 1] =   (pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;
+							pDstBuffer[y * width * 3 + x * 3 + 2] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;
+						}
+
+					}
+				}
+			}
+		}
+		break;
+
+	case 1: //GRBG
+		{ 
+			//corner case
+			x = 0;
+			y = 0;
+			i = (height-1)*width;
+			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[i]; //B
+			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i+1] )/2; //G
+			pDstBuffer[y * width * 3 + x * 3 + 2] =   pSrcBuffer[i-width+1]; 
+
+			x = width -1;
+			y = 0;			 
+			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[height*width-2];
+			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[(height-1)*width-2] + pSrcBuffer[height*width-1] )/2;
+			pDstBuffer[y * width * 3 + x * 3 + 2] = pSrcBuffer[(height-1)*width-1];
+
+			x = 0;   
+			y = height -1;
+			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[width];
+			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[0] + pSrcBuffer[width+1] )/2;
+			pDstBuffer[y * width * 3 + x * 3 + 2] = pSrcBuffer[1];
+
+			x = width - 1;
+			y = height - 1;
+			pDstBuffer[y * width * 3 + x * 3 + 0] =  pSrcBuffer[width*2-2];
+			pDstBuffer[y * width * 3 + x * 3 + 1] =  ( pSrcBuffer[width*2 -1] +  pSrcBuffer[width-2] )/2;
+			pDstBuffer[y * width * 3 + x * 3 + 2] =  pSrcBuffer[width -1];
+
+
+			//for boundary case
+			for( x = 1; x < width -1; x++ )
+			{
+				if( x%2 == 1 )
+				{
+					y = 0;                                             
+					i = ( height -1  )*width + x;  //G                       
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = (  pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i] + pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] )/3;      
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i-width]; 
+
+
+					y = height - 1;                                      
+					i = x;       //R               
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/2;          
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+width] + pSrcBuffer[i+1])/3;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i];    
+
+				}
+				else
+				{
+					y = 0;                                             
+					i = ( height -1  )*width + x;  //B                     
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i];      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  (  pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+1])/3 ;      
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] )/2; 
+
+
+					y = height - 1;                                      
+					i = x;                      
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i+width] ;          
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/3 ;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;    
+				}
+			}
+
+			for( y = 1; y < height - 1; y++ )
+			{
+				if( y%2 == 1 )
+				{
+					x = 0;                                             
+					i = ( height -1 - y )*width;  //G                     
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = (  pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width+1] )/3;      
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i+1]; 
+
+
+					x = width -1;                                      
+					i = ( height - 1 - y)* width + x; //R                     
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-width-1] + pSrcBuffer[i+width-1] )/2;          
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i-1])/3;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i];   
+
+				}
+				else
+				{
+					x = 0;                                             
+					i = ( height -1 - y )*width;                       
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i];      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  (  pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i+1])/3 ;      
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-width+1] + pSrcBuffer[i+width+1] )/2; 
+
+
+					x = width -1;                                      
+					i = ( height - 1 - y)* width + x;                      
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i-1] ;          
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = (  pSrcBuffer[i] + pSrcBuffer[i-width-1] + pSrcBuffer[i+width-1])/3;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;  
+
+				}
+			}
+
+			//other area
+			for( y = 1; y < height -1; y++ )
+			{
+				for( x = 1; x < width -1; x++ )
+				{
+					i = ( height -1 -y)*width + x;
+
+					if( y%2 == 1 )
+					{
+						if( x%2 == 1 ) //R
+						{
+							pDstBuffer[y * width * 3 + x * 3 + 0] = ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/4;
+							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i-1] + pSrcBuffer[i+1])/4;
+							pDstBuffer[y * width * 3 + x * 3 + 2] =  pSrcBuffer[i];
+
+						}
+						else     //G1
+						{
+							pDstBuffer[y * width * 3 + x * 3 + 0] = ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;
+							pDstBuffer[y * width * 3 + x * 3 + 1] =   (pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;
+							pDstBuffer[y * width * 3 + x * 3 + 2] = ( pSrcBuffer[i-1] + pSrcBuffer[i+1])/2; 
+						}
+					}
+					else
+					{
+						if( x%2 == 1 ) //G2
+						{   
+							pDstBuffer[ y * width * 3 + x * 3 + 0 ] =   ( pSrcBuffer[i-1] + pSrcBuffer[i+1])/2;     
+							pDstBuffer[ y * width * 3 + x * 3 + 1 ] =    ( pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;  
+							pDstBuffer[ y * width * 3 + x * 3 + 2 ] =   ( pSrcBuffer[i-width] + pSrcBuffer[i+width])/2;
+
+						}
+						else //B
+						{
+							pDstBuffer[ y * width * 3 + x * 3 + 0 ] =   pSrcBuffer[i];     
+							pDstBuffer[ y * width * 3 + x * 3 + 1 ] =   ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] )/4;  
+							pDstBuffer[ y * width * 3 + x * 3 + 2 ] =   ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/4; 
+						}
+
+					}
+				}
+
+			} 
+		}
+		break;
+
+	case 2:   //GBRG
+		{
+			//corner case
+			x = 0;
+			y = 0;
+			i = (height-1)*width;
+			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[i-width+1]; //B
+			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i+1] )/2; //G
+			pDstBuffer[y * width * 3 + x * 3 + 2] =   pSrcBuffer[i]; //R
+
+			x = width -1;
+			y = 0;			 
+			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[(height - 1)*width-1];
+			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[(height-1)*width-2] + pSrcBuffer[height*width-1] )/2;
+			pDstBuffer[y * width * 3 + x * 3 + 2] = pSrcBuffer[ height*width-2];
+
+			x = 0;   
+			y = height -1;
+			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[1];
+			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[0] + pSrcBuffer[width +1 ] )/2;
+			pDstBuffer[y * width * 3 + x * 3 + 2] = pSrcBuffer[width];
+
+			x = width -1;
+			y = height -1;
+			pDstBuffer[y * width * 3 + x * 3 + 0] =  pSrcBuffer[width-1];
+			pDstBuffer[y * width * 3 + x * 3 + 1] =  ( pSrcBuffer[width-2] +  pSrcBuffer[width*2-1] )/2;
+			pDstBuffer[y * width * 3 + x * 3 + 2] =  pSrcBuffer[width*2 -2];
+
+
+			//for boundary case
+			for( x = 1; x < width -1; x++ )
+			{
+				if( x%2 == 1 )
+				{
+					y = 0;                                             
+					i = ( height -1  )*width + x;                       
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[i-width];      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i] )/3;      
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2; 
+
+
+					y = height - 1;                                      
+					i = x;                      
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i];          
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] + pSrcBuffer[i+width])/3;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/2;    
+
+				}
+				else
+				{
+					y = 0;                                             
+					i = ( height -1  )*width + x;                       
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] )/2;      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  (  pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+1])/3 ;      
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i]; 
+
+
+					y = height - 1;                                      
+					i = x;                      
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1]  )/2 ;          
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/3 ;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i+width];    
+				}
+			}
+
+			for( y = 1; y < height - 1; y++ )
+			{
+				if( y%2 == 1 )
+				{
+					x = 0;                                             
+					i = ( height -1 - y )*width;                       
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i+1];      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i] + pSrcBuffer[i-width+1]+ pSrcBuffer[i+width+1])/3;      
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width])/2;//Here 
+
+
+					x = width -1;                                      
+					i = ( height - 1 - y)* width + x;                      
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i];          
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+width])/3;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-width-1] + pSrcBuffer[i+width-1] )/2;   
+
+				}
+				else
+				{
+					x = 0;                                             
+					i = ( height -1 - y )*width;                       
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-width+1] + pSrcBuffer[i+width+1] )/2;      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  (  pSrcBuffer[i-width] + pSrcBuffer[i+1] + pSrcBuffer[i+width])/3 ;      
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i]; 
+
+
+					x = width -1;                                      
+					i = ( height - 1 - y)* width + x;                      
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2 ;          
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = (  pSrcBuffer[i-width-1] + pSrcBuffer[i] + pSrcBuffer[i+width-1])/3;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i-1];  
+
+				}
+			}
+
+			//other area
+			for( y = 1; y < height -1; y++ )
+			{
+				for( x = 1; x < width -1; x++ )
+				{
+					i = ( height -1 -y)*width + x;
+
+					if( y%2 == 1 )
+					{
+						if( x%2 == 1 )  
+						{
+							//B
+							pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[i];
+							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] + pSrcBuffer[i+width])/4;
+							pDstBuffer[y * width * 3 + x * 3 + 2] = (pSrcBuffer[i-width-1] +pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1])/4;
+
+						}
+						else      
+						{
+							pDstBuffer[y * width * 3 + x * 3 + 0] = ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;
+							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;
+							pDstBuffer[y * width * 3 + x * 3 + 2] = ( pSrcBuffer[i-width] +  + pSrcBuffer[i+width])/2; 
+						}
+					}
+					else
+					{
+						if( x%2 == 1 )  
+						{   
+							pDstBuffer[ y * width * 3 + x * 3 + 0 ] =   ( pSrcBuffer[i-width] + pSrcBuffer[i+width])/2;     
+							pDstBuffer[ y * width * 3 + x * 3 + 1 ] =     ( pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;  
+							pDstBuffer[ y * width * 3 + x * 3 + 2 ] =   ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;
+
+						}
+						else  
+						{
+							pDstBuffer[ y * width * 3 + x * 3 + 0 ] =   ( pSrcBuffer[i-width-1] +pSrcBuffer[i-width+1]+ pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1])/4;     
+							pDstBuffer[ y * width * 3 + x * 3 + 1 ] =   ( pSrcBuffer[i-width] + pSrcBuffer[i+width]   + pSrcBuffer[i-1] + pSrcBuffer[i+1] )/4;  
+							pDstBuffer[ y * width * 3 + x * 3 + 2 ] =   pSrcBuffer[i]; 
+						}
+
+					}
+				}
+
+			}
+
+		}
+		break;
+
+
+
+	case 3:  //BGGR		
+		//////////////////////////////////////
+		{
+			//corner case
+			x = 0;
+			y = 0;
+			i = (height-1)*width;
+			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[i-width]; //B
+			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i] + pSrcBuffer[i-width+1] )/2;  
+			pDstBuffer[y * width * 3 + x * 3 + 2] =   pSrcBuffer[i+1]; //R
+
+			x = width -1;
+			y = 0;			 
+			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[(height - 1)*width-2];
+			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[height*width-2] + pSrcBuffer[(height-1)*width-1] )/2;
+			pDstBuffer[y * width * 3 + x * 3 + 2] = pSrcBuffer[ height*width-1];
+
+			x = 0;   
+			y = height -1;
+			pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[0];
+			pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[1] + pSrcBuffer[width] )/2;
+			pDstBuffer[y * width * 3 + x * 3 + 2] = pSrcBuffer[width+1];
+
+			x = width -1;
+			y = height -1;
+			pDstBuffer[y * width * 3 + x * 3 + 0] =  pSrcBuffer[width-2];
+			pDstBuffer[y * width * 3 + x * 3 + 1] =  ( pSrcBuffer[width-1] +  pSrcBuffer[width*2-2] )/2;
+			pDstBuffer[y * width * 3 + x * 3 + 2] =  pSrcBuffer[width*2 -1];
+
+
+			//for boundary case
+			for( x = 1; x < width -1; x++ )
+			{
+				if( x%2 == 1 )
+				{
+					y = 0;                                             
+					i = ( height -1  )*width + x;                       
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = (  pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] )/2;      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] )/3;      
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i]; 
+
+
+					y = height - 1;                                      
+					i = x;                      
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;          
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1])/3;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i+width];    
+
+				}
+				else
+				{
+					y = 0;                                             
+					i = ( height -1  )*width + x;                       
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i-width];      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  (  pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i])/3 ;      
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2; 
+
+
+					y = height - 1;                                      
+					i = x;                      
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i] ;          
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-1] + pSrcBuffer[i+1] + pSrcBuffer[i+width] )/3 ;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1] )/2;    
+				}
+			}
+
+			for( y = 1; y < height - 1; y++ )
+			{
+				if( y%2 == 1 )
+				{
+					x = 0;                                             
+					i = ( height -1 - y )*width;                       
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] = pSrcBuffer[i];      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+1] + pSrcBuffer[i+width] )/3;      
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  (pSrcBuffer[i-width+1] + pSrcBuffer[i+width+1])/2; 
+
+
+					x = width -1;                                      
+					i = ( height - 1 - y)* width + x;                      
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  pSrcBuffer[i-1];          
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  ( pSrcBuffer[i-width-1] + pSrcBuffer[i] + pSrcBuffer[i+width-1])/3;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;   
+
+				}
+				else
+				{
+					x = 0;                                             
+					i = ( height -1 - y )*width;                       
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;      
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] =  (  pSrcBuffer[i-width+1] + pSrcBuffer[i] + pSrcBuffer[i+width+1])/3 ;      
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i+1]; 
+
+
+					x = width -1;                                      
+					i = ( height - 1 - y)* width + x;                      
+					pDstBuffer[ y * width * 3 + x * 3 + 0 ] =  ( pSrcBuffer[i-width-1] + pSrcBuffer[i+width-1] )/2 ;          
+					pDstBuffer[ y * width * 3 + x * 3 + 1 ] = (  pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+width])/3;        
+					pDstBuffer[ y * width * 3 + x * 3 + 2 ] =  pSrcBuffer[i];  
+
+				}
+			}
+
+			//other area
+			for( y = 1; y < height -1; y++ )
+			{
+				for( x = 1; x < width -1; x++ )
+				{
+					i = ( height -1 -y)*width + x;
+
+					if( y%2 == 1 )
+					{
+						if( x%2 == 1 )  
+						{
+							pDstBuffer[y * width * 3 + x * 3 + 0] = ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2;
+							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;
+							pDstBuffer[y * width * 3 + x * 3 + 2] = (pSrcBuffer[i-width] + pSrcBuffer[i+width])/2;
+
+						}
+						else      
+						{
+							pDstBuffer[y * width * 3 + x * 3 + 0] = pSrcBuffer[i];
+							pDstBuffer[y * width * 3 + x * 3 + 1] = ( pSrcBuffer[i-width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] + pSrcBuffer[i+width ] )/4;
+							pDstBuffer[y * width * 3 + x * 3 + 2] = ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1])/4; 
+						}
+					}
+					else
+					{
+						if( x%2 == 1 )  
+						{   
+							pDstBuffer[ y * width * 3 + x * 3 + 0 ] =   ( pSrcBuffer[i-width-1] + pSrcBuffer[i-width+1] + pSrcBuffer[i+width-1] + pSrcBuffer[i+width+1])/4;     
+							pDstBuffer[ y * width * 3 + x * 3 + 1 ] =   ( pSrcBuffer[i-width] + pSrcBuffer[i+width] + pSrcBuffer[i-1] + pSrcBuffer[i+1] )/4;  
+							pDstBuffer[ y * width * 3 + x * 3 + 2 ] =   pSrcBuffer[i];
+
+						}
+						else  
+						{
+							pDstBuffer[ y * width * 3 + x * 3 + 0 ] =   ( pSrcBuffer[i-width] + pSrcBuffer[i+width] )/2;     
+							pDstBuffer[ y * width * 3 + x * 3 + 1 ] =   ( pSrcBuffer[i] + pSrcBuffer[i-width-1] )/2;  
+							pDstBuffer[ y * width * 3 + x * 3 + 2 ] =   ( pSrcBuffer[i-1] + pSrcBuffer[i+1] )/2; 
+						}
+
+					}
+				}
+
+			} 
+
+		}
+		break;
+	} 
+}
+
+BOOL Cell10ToRaw10(unsigned char* cell10buf, int width, int height)
+{
+
+	for (int i = 2; i < width * height * 2; i += 8)
+	{
+		unsigned char temp = 0;
+		//低位互换
+		temp = cell10buf[i];
+		cell10buf[i] = cell10buf[i + 2];
+		cell10buf[i + 2] = temp;
+		//高位互换
+		temp = cell10buf[i + 1];
+		cell10buf[i + 1] = cell10buf[i + 3];
+		cell10buf[i + 3] = temp;
+	}
+
+	for (int i = 1; i < height; i += 4)
+	{
+		for (int j = 0; j < width * 2; j++)
+		{
+			unsigned char temp = 0;
+			//行转换
+			temp = cell10buf[i * width * 2 + j];
+			cell10buf[i * width * 2 + j] = cell10buf[(i + 1) * width * 2 + j];
+			cell10buf[(i + 1) * width * 2 + j] = temp;
+		}
+	}
+	if (cell10buf != NULL)
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
+BOOL Cell8ToRaw8(unsigned char* cell8buf, int width, int height)
+{
+	for (int i = 0; i < height; i++)
+	{
+		for (int j = 0; j < width; j++)
+		{
+			unsigned char temp = 0;
+			//列转换
+			if (i % 4 == 2)
+			{
+				temp = cell8buf[i * width + j];
+				cell8buf[i * width + j] = cell8buf[(i - 1) * width + j];
+				cell8buf[(i - 1) * width + j] = temp;
+			}
+		}
+	}
+	for (int i = 0; i < height; i++)
+	{
+		for (int j = 0; j < width; j++)
+		{
+			unsigned char temp = 0;
+			//行转换
+			if (j % 4 == 1)
+			{
+				temp = cell8buf[i * width + j];
+				cell8buf[i * width + j] = cell8buf[i * width + j + 1];
+				cell8buf[i * width + j + 1] = temp;
+			}
+		}
+	}
+	if (cell8buf != NULL)
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/************************************************************************
+ USHORT转UCHAR
+ @param USHORT* src为源数组
+ @param UCHAR *dst为目标数组 
+ @param width为USHORT的宽
+ @param height为USHORT的高
+ @desription
+ 需要两个	已经分配过内存空间	的指针，对数据进行转换
+ 需要提防	数组越界	的问题
+
+ @param size 数组总长度
+************************************************************************/
+void US_to_UC(USHORT* src, UCHAR *dst, int width, int height)
+{
+	for (int col = 0; col < height; col++)
+	{
+		for (int row = 0; row < width; row++)
+		{
+			dst[2 * (col * width + row)] = (src[col * width + row] >> 8) & 0x00ff;
+			dst[2 * (col * width + row) + 1] = src[col * width + row] & 0x00ff;
+		}
+	}
+}
+
+void US_to_UC(USHORT* src, UCHAR *dst, int size)
+{
+	for (int i = 0; i < size; i++)
+	{
+		dst[2 * i] = (src[i] >> 8) & 0xff;
+		dst[2 * i + 1] = src[i] & 0xff;
+	}
+}
+
+/************************************************************************
+ UCHAR转USHORT
+ @param UCHAR* src为源数组
+ @param USHORT *dst为目标数组
+ @param width为UCHAR的宽
+ @param height为UCHAR的高
+ @desription
+ 需要两个	已经分配过内存空间	的指针，对数据进行转换
+ 需要提防	数组越界	的问题
+
+ @param size 数组总长度
+************************************************************************/
+BOOL UC_to_US(UCHAR* src, USHORT *dst, int width, int height)
+{
+	for (int col = 0; col < height; col++)
+	{
+		for (int row = 0; row < width; row += 2)
+		{
+			dst[(col * width + row) / 2] = src[col * width + row] * 256 + src[col * width + row + 1];
+		}
+	}
+}
+
+void UC_to_US(UCHAR* src, USHORT *dst, int size)
+{
+	for (int i = 0; i < size; i += 2)
+	{
+		dst[i / 2] = src[i] * 256 + src[i + 1];
+	}
+}
+
+/*************************
+ *
+ *	左旋90度
+ *	坐标之间的关系
+ *	
+ *	<b>width * height</b><br>
+ *	==============>
+ *	heigth * width
+ *	
+ *	old			new
+ *	(h1, w1)	(h2, w2)
+ *	
+ *	h1 + w2 = height - 1;
+ *	
+ *	h2 = w1;
+ *	
+ *************************/
+void RAngleRotation(unsigned char *src, unsigned char *dst, int width, int height)
+{
+	for (int h = 0; h < width; h++)
+	{
+		for (int w = 0; w < height; w++)
+		{
+			dst[h * height + w] = src[(height - w - 1) * width + h];
+		}
+	}
+}
+
+//Raw10的旋转
+void RAngleRotation(USHORT *src, USHORT *dst, int width, int height)
+{
+	for (int h = 0; h < width; h++)
+	{
+		for (int w = 0; w < height; w++)
+		{
+			dst[h * height + w] = src[(height - w - 1) * width + h];
+		}
+	}
+}
+
+/*************************
+ *
+ *	转置
+ *	坐标之间的关系
+ *
+ *	width * height
+ *	==============>
+ *	heigth * width
+ *
+ *	old			new
+ *	(h1, w1)	(h2, w2)
+ *
+ *	w2 = h1;
+ *
+ *	h2 = w1;
+ *	
+ *************************/
+void Transpose(unsigned char *src, unsigned char *dst, int width, int height)
+{
+	for (int h = 0; h < width; h++)
+	{
+		for (int w = 0; w < height; w++)
+		{
+			dst[h * height + w] = src[w * width + h];
+		}
+	}
+}
+
+//R10的转置
+void Transpose(USHORT *src, USHORT *dst, int width, int height)
+{
+	for (int h = 0; h < width; h++)
+	{
+		for (int w = 0; w < height; w++)
+		{
+			dst[h * height + w] = src[w * width + h];
+		}
+	}
+}
+/*************************
+ *
+ *	镜像
+ *	坐标之间的关系
+ *
+ *	width * height
+ *	==============>
+ *	heigth * width
+ *
+ *	old			new
+ *	(h1, w1)	(h2, w2)
+ *
+ *	w1 + w2 = width - 1;
+ *
+ *	h1 = h2;
+ *	
+ *************************/
+void mirrorTrans(unsigned char *src, unsigned char *dst, int width, int height)
+{
+	for (int h = 0; h < height; h++)
+	{
+		for (int w = 0; w < width; w++)
+		{
+			dst[h * width + w] = src[h * width + width - w - 1];
+		}
+	}
+}
+
+//Raw10的镜像
+void mirrorTrans(USHORT *src, USHORT *dst, int width, int height)
+{
+	for (int h = 0; h < height; h++)
+	{
+		for (int w = 0; w < width; w++)
+		{
+			dst[h * width + w] = src[h * width + width - w - 1];
+		}
 	}
 }

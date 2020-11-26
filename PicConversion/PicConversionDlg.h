@@ -52,6 +52,7 @@ public:
 	afx_msg void OnBnClickedButton6();
 	int m_ROI;
 	afx_msg void OnBnClickedButton7();
+	afx_msg void OnBnClickedButton8();
 };
 
 BOOL Raw8ToRaw10(unsigned char* raw8, unsigned char* raw10, int width, int height);
@@ -61,6 +62,9 @@ void BayerConversionFlip( BYTE* pSrcBuffer, BYTE* pDstBuffer, int nImgWidth, int
 BOOL Cell10ToRaw10(unsigned char* cell10buf, int width, int height);
 BOOL Cell8ToRaw8(unsigned char* cell8buf, int width, int height);
 void RAngleRotation(unsigned char *src, unsigned char *dst, int width, int height);
+void RAngleRotation(USHORT *src, USHORT *dst, int width, int height);
 void Transpose(unsigned char *src, unsigned char *dst, int width, int height);
+void Transpose(USHORT *src, USHORT *dst, int width, int height);
 void mirrorTrans(unsigned char *src, unsigned char *dst, int width, int height);
+void mirrorTrans(USHORT *src, USHORT *dst, int width, int height);
 int ReadSFRFile(char *filename, char *outfilename);
